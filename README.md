@@ -39,7 +39,7 @@ cd build
 cmake -G "Visual Studio 15 2017" -A "x64" ..
 ```
 
-### Compiling, linking, etc.
+### Compiling, linking, et cetera
 
 Either use [CMake](https://cmake.org/) or your toolchain's IDE to build.
 For [CMake](https://cmake.org/):
