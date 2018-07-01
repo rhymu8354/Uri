@@ -61,6 +61,17 @@ namespace Uri {
         std::string GetScheme() const;
 
         /**
+         * This method returns the "UserInfo" element of the URI.
+         *
+         * @return
+         *     The "UserInfo" element of the URI is returned.
+         *
+         * @retval ""
+         *     This is returned if there is no "UserInfo" element in the URI.
+         */
+        std::string GetUserInfo() const;
+
+        /**
         * This method returns the "host" element of the URI.
         *
         * @return
@@ -107,6 +118,50 @@ namespace Uri {
          *     HasPort method returns true.
          */
         uint16_t GetPort() const;
+
+        /**
+         * This method returns an indication of whether or not
+         * the URI is a relative reference.
+         *
+         * @return
+         *     An indication of whether or not the URI is a
+         *     relative reference is returned.
+         */
+        bool IsRelativeReference() const;
+
+        /**
+         * This method returns an indication of whether or not
+         * the URI contains a relative path.
+         *
+         * @return
+         *     An indication of whether or not the URI contains a
+         *     relative path is returned.
+         */
+        bool ContainsRelativePath() const;
+
+        /**
+         * This method returns the "query" element of the URI,
+         * if it has one.
+         *
+         * @return
+         *     The "query" element of the URI is returned.
+         *
+         * @retval ""
+         *     This is returned if there is no "query" element in the URI.
+         */
+        std::string GetQuery() const;
+
+        /**
+         * This method returns the "fragment" element of the URI,
+         * if it has one.
+         *
+         * @return
+         *     The "fragment" element of the URI is returned.
+         *
+         * @retval ""
+         *     This is returned if there is no "fragment" element in the URI.
+         */
+        std::string GetFragment() const;
 
         // Private properties
     private:

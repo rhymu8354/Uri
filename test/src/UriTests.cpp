@@ -10,6 +10,19 @@
 #include <stddef.h>
 #include <Uri/Uri.hpp>
 
+TEST(UriTests, ParseFromStringNoScheme) {
+    Uri::Uri uri;
+    ASSERT_TRUE(uri.ParseFromString("foo/bar"));
+    ASSERT_EQ("", uri.GetScheme());
+    ASSERT_EQ(
+        (std::vector< std::string >{
+            "foo",
+            "bar",
+        }),
+        uri.GetPath()
+    );
+}
+
 TEST(UriTests, ParseFromStringUrl) {
     Uri::Uri uri;
     ASSERT_TRUE(uri.ParseFromString("http://www.example.com/foo/bar"));
@@ -105,4 +118,113 @@ TEST(UriTests, ParseFromStringBadPortNumberTooBig) {
 TEST(UriTests, ParseFromStringBadPortNumberNegative) {
     Uri::Uri uri;
     ASSERT_FALSE(uri.ParseFromString("http://www.example.com:-1234/foo/bar"));
+}
+
+TEST(UriTests, ParseFromStringEndsAfterAuthority) {
+    Uri::Uri uri;
+    ASSERT_TRUE(uri.ParseFromString("http://www.example.com"));
+}
+
+TEST(UriTests, ParseFromStringRelativeVsNonRelativeReferences) {
+    struct TestVector {
+        std::string uriString;
+        bool isRelativeReference;
+    };
+    const std::vector< TestVector > testVectors{
+        {"http://www.example.com/", false},
+        {"http://www.example.com", false},
+        {"/", true},
+        {"foo", true},
+    };
+    size_t index = 0;
+    for (const auto& testVector : testVectors) {
+        Uri::Uri uri;
+        ASSERT_TRUE(uri.ParseFromString(testVector.uriString)) << index;
+        ASSERT_EQ(testVector.isRelativeReference, uri.IsRelativeReference()) << index;
+        ++index;
+    }
+}
+
+TEST(UriTests, ParseFromStringRelativeVsNonRelativePaths) {
+    struct TestVector {
+        std::string uriString;
+        bool containsRelativePath;
+    };
+    const std::vector< TestVector > testVectors{
+        {"http://www.example.com/", false},
+        {"http://www.example.com", true},
+        {"/", false},
+        {"foo", true},
+
+        /*
+         * This is only a valid test vector if we understand
+         * correctly that an empty string IS a valid
+         * "relative reference" URI with an empty path.
+         */
+        {"", true},
+    };
+    size_t index = 0;
+    for (const auto& testVector : testVectors) {
+        Uri::Uri uri;
+        ASSERT_TRUE(uri.ParseFromString(testVector.uriString)) << index;
+        ASSERT_EQ(testVector.containsRelativePath, uri.ContainsRelativePath()) << index;
+        ++index;
+    }
+}
+
+TEST(UriTests, ParseFromStringQueryAndFragmentElements) {
+    struct TestVector {
+        std::string uriString;
+        std::string host;
+        std::string query;
+        std::string fragment;
+    };
+    const std::vector< TestVector > testVectors{
+        {"http://www.example.com/", "www.example.com", "", ""},
+        {"http://example.com?foo", "example.com", "foo", ""},
+        {"http://www.example.com#foo", "www.example.com", "", "foo"},
+        {"http://www.example.com?foo#bar", "www.example.com", "foo", "bar"},
+        {"http://www.example.com?earth?day#bar", "www.example.com", "earth?day", "bar"},
+        {"http://www.example.com/spam?foo#bar", "www.example.com", "foo", "bar"},
+
+        /*
+         * NOTE: curiously, but we think this is correct, that
+         * having a trailing question mark is equivalent to not having
+         * any question mark, because in both cases, the query element
+         * is empty string.  Perhaps research deeper to see if this is right.
+         */
+        {"http://www.example.com/?", "www.example.com", "", ""},
+    };
+    size_t index = 0;
+    for (const auto& testVector : testVectors) {
+        Uri::Uri uri;
+        ASSERT_TRUE(uri.ParseFromString(testVector.uriString)) << index;
+        ASSERT_EQ(testVector.host, uri.GetHost()) << index;
+        ASSERT_EQ(testVector.query, uri.GetQuery()) << index;
+        ASSERT_EQ(testVector.fragment, uri.GetFragment()) << index;
+        ++index;
+    }
+}
+
+TEST(UriTests, ParseFromStringUserInfo) {
+    struct TestVector {
+        std::string uriString;
+        std::string userInfo;
+    };
+    const std::vector< TestVector > testVectors{
+        {"http://www.example.com/", ""},
+        {"http://joe@www.example.com", "joe"},
+        {"http://pepe:feelsbadman@www.example.com", "pepe:feelsbadman"},
+        {"//www.example.com", ""},
+        {"//bob@www.example.com", "bob"},
+        {"/", ""},
+        {"foo", ""},
+    };
+    size_t index = 0;
+    for (const auto& testVector : testVectors) {
+        Uri::Uri uri;
+        ASSERT_TRUE(uri.ParseFromString(testVector.uriString)) << index;
+        ASSERT_EQ(testVector.userInfo, uri.GetUserInfo()) << index;
+        ++index;
+    }
 }
