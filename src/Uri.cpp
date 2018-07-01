@@ -133,6 +133,7 @@ namespace Uri {
             }
             hostPortAndPathString = authorityAndPathString.substr(authorityEnd);
         } else {
+            impl_->userInfo.clear();
             impl_->host.clear();
             hostPortAndPathString = authorityAndPathString;
         }

@@ -228,3 +228,10 @@ TEST(UriTests, ParseFromStringUserInfo) {
         ++index;
     }
 }
+
+TEST(UriTests, ParseFromStringTwiceFirstUserInfoThenWithout) {
+    Uri::Uri uri;
+    ASSERT_TRUE(uri.ParseFromString("http://joe@www.example.com/foo/bar"));
+    ASSERT_TRUE(uri.ParseFromString("/foo/bar"));
+    ASSERT_TRUE(uri.GetUserInfo().empty());
+}
