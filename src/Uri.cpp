@@ -466,11 +466,15 @@ namespace Uri {
 
     bool Uri::ParseFromString(const std::string& uriString) {
         // First parse the scheme.
-        auto authorityDelimiter = uriString.find("//");
-        if (authorityDelimiter == std::string::npos) {
-            authorityDelimiter = uriString.length();
+        // Limit our search so we don't scan into the authority
+        // or path elements, because these may have the colon
+        // character as well, which we might misinterpret
+        // as the scheme delimiter.
+        auto authorityOrPathDelimiterStart = uriString.find('/');
+        if (authorityOrPathDelimiterStart == std::string::npos) {
+            authorityOrPathDelimiterStart = uriString.length();
         }
-        const auto schemeEnd = uriString.substr(0, authorityDelimiter).find(':');
+        const auto schemeEnd = uriString.substr(0, authorityOrPathDelimiterStart).find(':');
         std::string rest;
         if (schemeEnd == std::string::npos) {
             impl_->scheme.clear();

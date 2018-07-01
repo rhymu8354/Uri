@@ -349,13 +349,14 @@ TEST(UriTests, ParseFromStringHostBarelyLegal) {
     }
 }
 
-TEST(UriTests, ParseFromStringDontMisinterpretColonInAuthorityAsSchemeDelimiter) {
+TEST(UriTests, ParseFromStringDontMisinterpretColonInOtherPlacesAsSchemeDelimiter) {
     const std::vector< std::string > testVectors{
         {"//foo:bar@www.example.com/"},
         {"//www.example.com/a:b"},
         {"//www.example.com/foo?a:b"},
         {"//www.example.com/foo#a:b"},
         {"//[v7.:]/"},
+        {"/:/foo"},
     };
     size_t index = 0;
     for (const auto& testVector : testVectors) {
