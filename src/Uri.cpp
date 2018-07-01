@@ -129,6 +129,161 @@ namespace {
         };
     }
 
+    /**
+     * This method checks and decodes the given path segment.
+     *
+     * @param[in,out] segment
+     *     On input, this is the path segment to check and decode.
+     *     On output, this is the decoded path segment.
+     *
+     * @return
+     *     An indication of whether or not the path segment
+     *     passed all checks and was decoded successfully is returned.
+     */
+    bool DecodePathSegment(std::string& segment) {
+        const auto originalSegment = std::move(segment);
+        segment.clear();
+        size_t decoderState = 0;
+        int decodedCharacter = 0;
+        for (const auto c: originalSegment) {
+            switch(decoderState) {
+                case 0: { // default
+                    if (c == '%') {
+                        decoderState = 1;
+                    } else {
+                        if (
+                            IsCharacterInSet(
+                                c,
+                                {
+                                    // unreserved
+                                    'a','z', 'A','Z', // ALPHA
+                                    '0','9', // DIGIT
+                                    '-','-', '.','.', '_','_', '~','~',
+
+                                    // sub-delims
+                                    '!','!', '$','$', '&','&', '\'','\'', '(','(', ')',')',
+                                    '*','*', '+','+', ',',',', ';',';', '=','=',
+
+                                    // (also allowed in segment or pchar)
+                                    ':',':', '@','@'
+                                }
+                            )
+                        ) {
+                            segment.push_back(c);
+                        } else {
+                            return false;
+                        }
+                    }
+                } break;
+
+                case 1: { // % ...
+                    decoderState = 2;
+                    decodedCharacter <<= 4;
+                    if (IsCharacterInSet(c, {'0','9'})) {
+                        decodedCharacter += (int)(c - '0');
+                    } else if (IsCharacterInSet(c, {'A','F'})) {
+                        decodedCharacter += (int)(c - 'A') + 10;
+                    } else {
+                        return false;
+                    }
+                } break;
+
+                case 2: { // %[0-9A-F] ...
+                    decoderState = 0;
+                    decodedCharacter <<= 4;
+                    if (IsCharacterInSet(c, {'0','9'})) {
+                        decodedCharacter += (int)(c - '0');
+                    } else if (IsCharacterInSet(c, {'A','F'})) {
+                        decodedCharacter += (int)(c - 'A') + 10;
+                    } else {
+                        return false;
+                    }
+                    segment.push_back((char)decodedCharacter);
+                } break;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * This method checks and decodes the given query or fragment.
+     *
+     * @param[in,out] queryOrFragment
+     *     On input, this is the query or fragment to check and decode.
+     *     On output, this is the decoded query or fragment.
+     *
+     * @return
+     *     An indication of whether or not the query or fragment
+     *     passed all checks and was decoded successfully is returned.
+     */
+    bool DecodeQueryOrFragment(std::string& queryOrFragment) {
+        const auto originalQueryOrFragment = std::move(queryOrFragment);
+        queryOrFragment.clear();
+        size_t decoderState = 0;
+        int decodedCharacter = 0;
+        for (const auto c: originalQueryOrFragment) {
+            switch(decoderState) {
+                case 0: { // default
+                    if (c == '%') {
+                        decoderState = 1;
+                    } else {
+                        if (
+                            IsCharacterInSet(
+                                c,
+                                {
+                                    // unreserved
+                                    'a','z', 'A','Z', // ALPHA
+                                    '0','9', // DIGIT
+                                    '-','-', '.','.', '_','_', '~','~',
+
+                                    // sub-delims
+                                    '!','!', '$','$', '&','&', '\'','\'', '(','(', ')',')',
+                                    '*','*', '+','+', ',',',', ';',';', '=','=',
+
+                                    // (also allowed in pchar)
+                                    ':',':', '@','@',
+
+                                    // (also allowed in query or fragment)
+                                    '/','/', '?','?'
+                                }
+                            )
+                        ) {
+                            queryOrFragment.push_back(c);
+                        } else {
+                            return false;
+                        }
+                    }
+                } break;
+
+                case 1: { // % ...
+                    decoderState = 2;
+                    decodedCharacter <<= 4;
+                    if (IsCharacterInSet(c, {'0','9'})) {
+                        decodedCharacter += (int)(c - '0');
+                    } else if (IsCharacterInSet(c, {'A','F'})) {
+                        decodedCharacter += (int)(c - 'A') + 10;
+                    } else {
+                        return false;
+                    }
+                } break;
+
+                case 2: { // %[0-9A-F] ...
+                    decoderState = 0;
+                    decodedCharacter <<= 4;
+                    if (IsCharacterInSet(c, {'0','9'})) {
+                        decodedCharacter += (int)(c - '0');
+                    } else if (IsCharacterInSet(c, {'A','F'})) {
+                        decodedCharacter += (int)(c - 'A') + 10;
+                    } else {
+                        return false;
+                    }
+                    queryOrFragment.push_back((char)decodedCharacter);
+                } break;
+            }
+        }
+        return true;
+    }
+
 }
 
 namespace Uri {
@@ -183,82 +338,6 @@ namespace Uri {
         std::string fragment;
 
         // Methods
-
-        /**
-         * This method checks and decodes the given path segment.
-         *
-         * @param[in,out] segment
-         *     On input, this is the path segment to check and decode.
-         *     On output, this is the decoded path segment.
-         *
-         * @return
-         *     An indication of whether or not the path segment
-         *     passed all checks and was decoded successfully is returned.
-         */
-        bool DecodePathSegment(std::string& segment) {
-            const auto originalSegment = std::move(segment);
-            segment.clear();
-            size_t decoderState = 0;
-            int decodedCharacter = 0;
-            for (const auto c: originalSegment) {
-                switch(decoderState) {
-                    case 0: { // default
-                        if (c == '%') {
-                            decoderState = 1;
-                        } else {
-                            if (
-                                IsCharacterInSet(
-                                    c,
-                                    {
-                                        // unreserved
-                                        'a','z', 'A','Z', // ALPHA
-                                        '0','9', // DIGIT
-                                        '-','-', '.','.', '_','_', '~','~',
-
-                                        // sub-delims
-                                        '!','!', '$','$', '&','&', '\'','\'', '(','(', ')',')',
-                                        '*','*', '+','+', ',',',', ';',';', '=','=',
-
-                                        // (also allowed in segment or pchar)
-                                        ':',':', '@','@'
-                                    }
-                                )
-                            ) {
-                                segment.push_back(c);
-                            } else {
-                                return false;
-                            }
-                        }
-                    } break;
-
-                    case 1: { // % ...
-                        decoderState = 2;
-                        decodedCharacter <<= 4;
-                        if (IsCharacterInSet(c, {'0','9'})) {
-                            decodedCharacter += (int)(c - '0');
-                        } else if (IsCharacterInSet(c, {'A','F'})) {
-                            decodedCharacter += (int)(c - 'A') + 10;
-                        } else {
-                            return false;
-                        }
-                    } break;
-
-                    case 2: { // %[0-9A-F] ...
-                        decoderState = 0;
-                        decodedCharacter <<= 4;
-                        if (IsCharacterInSet(c, {'0','9'})) {
-                            decodedCharacter += (int)(c - '0');
-                        } else if (IsCharacterInSet(c, {'A','F'})) {
-                            decodedCharacter += (int)(c - 'A') + 10;
-                        } else {
-                            return false;
-                        }
-                        segment.push_back((char)decodedCharacter);
-                    } break;
-                }
-            }
-            return true;
-        }
 
         /**
          * This method builds the internal path element sequence
@@ -616,12 +695,18 @@ namespace Uri {
             impl_->fragment = queryAndOrFragment.substr(fragmentDelimiter + 1);
             rest = queryAndOrFragment.substr(0, fragmentDelimiter);
         }
+        if (!DecodeQueryOrFragment(impl_->fragment)) {
+            return false;
+        }
 
         // Finally, if anything is left, it's the query.
         if (rest.empty()) {
             impl_->query.clear();
         } else {
             impl_->query = rest.substr(1);
+        }
+        if (!DecodeQueryOrFragment(impl_->query)) {
+            return false;
         }
         return true;
     }
