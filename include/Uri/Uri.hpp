@@ -36,16 +36,6 @@ namespace Uri {
         Uri();
 
         /**
-         * This method sets the character or character sequence
-         * that should be interpreted as a path delimiter.
-         *
-         * @param[in] newPathDelimiter
-         *     This is the character or character sequence
-         *     that should be interpreted as a path delimiter.
-         */
-        void SetPathDelimiter(const std::string& newPathDelimiter);
-
-        /**
          * This method builds the URI from the elements parsed
          * from the given string rendering of a URI.
          *
@@ -82,15 +72,15 @@ namespace Uri {
 
         /**
          * This method returns the "path" element of the URI,
-         * as a sequence of steps.
+         * as a sequence of segments.
          *
          * @note
-         *     If the first step of the path is an empty string,
+         *     If the first segment of the path is an empty string,
          *     then the URI has an absolute path.
          *
          * @return
          *     The "path" element of the URI is returned
-         *     as a sequence of steps.
+         *     as a sequence of segments.
          */
         std::vector< std::string > GetPath() const;
 

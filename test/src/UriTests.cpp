@@ -38,38 +38,6 @@ TEST(UriTests, ParseFromStringUrnDefaultPathDelimiter) {
     );
 }
 
-TEST(UriTests, ParseFromStringUrnSingleCharacterPathDelimiter) {
-    Uri::Uri uri;
-    uri.SetPathDelimiter(":");
-    ASSERT_TRUE(uri.ParseFromString("urn:book:fantasy:Hobbit"));
-    ASSERT_EQ("urn", uri.GetScheme());
-    ASSERT_EQ("", uri.GetHost());
-    ASSERT_EQ(
-        (std::vector< std::string >{
-            "book",
-            "fantasy",
-            "Hobbit",
-        }),
-        uri.GetPath()
-    );
-}
-
-TEST(UriTests, ParseFromStringUrnMultiCharacterPathDelimiter) {
-    Uri::Uri uri;
-    uri.SetPathDelimiter("/-");
-    ASSERT_TRUE(uri.ParseFromString("urn:bo-/ok/-fant/asy/-Hob-bit"));
-    ASSERT_EQ("urn", uri.GetScheme());
-    ASSERT_EQ("", uri.GetHost());
-    ASSERT_EQ(
-        (std::vector< std::string >{
-            "bo-/ok",
-            "fant/asy",
-            "Hob-bit",
-        }),
-        uri.GetPath()
-    );
-}
-
 TEST(UriTests, ParseFromStringPathCornerCases) {
     struct TestVector {
         std::string pathIn;

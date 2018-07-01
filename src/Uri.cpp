@@ -16,12 +16,6 @@ namespace Uri {
      */
     struct Uri::Impl {
         /**
-         * This is the character or character sequence
-         * that should be interpreted as a path delimiter.
-         */
-        std::string pathDelimiter = "/";
-
-        /**
          * This is the "scheme" element of the URI.
          */
         std::string scheme;
@@ -33,7 +27,7 @@ namespace Uri {
 
         /**
          * This is the "path" element of the URI,
-         * as a sequence of steps.
+         * as a sequence of segments.
          */
         std::vector< std::string > path;
     };
@@ -45,10 +39,6 @@ namespace Uri {
     {
     }
 
-    void Uri::SetPathDelimiter(const std::string& newPathDelimiter) {
-        impl_->pathDelimiter = newPathDelimiter;
-    }
-
     bool Uri::ParseFromString(const std::string& uriString) {
         // First parse the scheme.
         const auto schemeEnd = uriString.find(':');
@@ -57,7 +47,7 @@ namespace Uri {
 
         // Next parse the host.
         if (rest.substr(0, 2) == "//") {
-            const auto authorityEnd = rest.find(impl_->pathDelimiter, 2);
+            const auto authorityEnd = rest.find('/', 2);
             impl_->host = rest.substr(2, authorityEnd - 2);
             rest = rest.substr(authorityEnd);
         } else {
@@ -66,13 +56,13 @@ namespace Uri {
 
         // Finally, parse the path.
         impl_->path.clear();
-        if (rest == impl_->pathDelimiter) {
+        if (rest == "/") {
             // Special case of a path that is empty but needs a single
             // empty-string element to indicate that it is absolute.
             impl_->path.push_back("");
         } else if (!rest.empty()) {
             for(;;) {
-                auto pathDelimiter = rest.find(impl_->pathDelimiter);
+                auto pathDelimiter = rest.find('/');
                 if (pathDelimiter == std::string::npos) {
                     impl_->path.push_back(rest);
                     break;
@@ -81,7 +71,7 @@ namespace Uri {
                         rest.begin(),
                         rest.begin() + pathDelimiter
                     );
-                    rest = rest.substr(pathDelimiter + impl_->pathDelimiter.length());
+                    rest = rest.substr(pathDelimiter + 1);
                 }
             }
         }
