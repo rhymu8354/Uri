@@ -274,3 +274,39 @@ TEST(UriTests, ParseFromStringSchemeBarelyLegal) {
         ++index;
     }
 }
+
+TEST(UriTests, ParseFromStringUserInfoIllegalCharacters) {
+    const std::vector< std::string > testVectors{
+        {"//%X@www.example.com/"},
+        {"//{@www.example.com/"},
+    };
+    size_t index = 0;
+    for (const auto& testVector : testVectors) {
+        Uri::Uri uri;
+        ASSERT_FALSE(uri.ParseFromString(testVector)) << index;
+        ++index;
+    }
+}
+
+TEST(UriTests, ParseFromStringUserInfoBarelyLegal) {
+    struct TestVector {
+        std::string uriString;
+        std::string userInfo;
+    };
+    const std::vector< TestVector > testVectors{
+        {"//%41@www.example.com/", "A"},
+        {"//@www.example.com/", ""},
+        {"//!@www.example.com/", "!"},
+        {"//'@www.example.com/", "'"},
+        {"//(@www.example.com/", "("},
+        {"//;@www.example.com/", ";"},
+        {"http://:@www.example.com/", ":"},
+    };
+    size_t index = 0;
+    for (const auto& testVector : testVectors) {
+        Uri::Uri uri;
+        ASSERT_TRUE(uri.ParseFromString(testVector.uriString)) << index;
+        ASSERT_EQ(testVector.userInfo, uri.GetUserInfo());
+        ++index;
+    }
+}

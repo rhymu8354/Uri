@@ -237,11 +237,70 @@ namespace Uri {
             // Next, check if there is a UserInfo, and if so, extract it.
             const auto userInfoDelimiter = authorityString.find('@');
             std::string hostPortString;
+            userInfo.clear();
             if (userInfoDelimiter == std::string::npos) {
-                userInfo.clear();
                 hostPortString = authorityString;
             } else {
-                userInfo = authorityString.substr(0, userInfoDelimiter);
+                const auto userInfoEncoded = authorityString.substr(0, userInfoDelimiter);
+                size_t decoderState = 0;
+                int decodedCharacter = 0;
+                for (const auto c: userInfoEncoded) {
+                    switch(decoderState) {
+                        case 0: { // default
+                            if (c == '%') {
+                                decoderState = 1;
+                            } else {
+                                if (
+                                    IsCharacterInSet(
+                                        c,
+                                        {
+                                            // unreserved
+                                            'a','z', 'A','Z', // ALPHA
+                                            '0','9', // DIGIT
+                                            '-','-', '.','.', '_','_', '~','~',
+
+                                            // sub-delims
+                                            '!','!', '$','$', '&','&', '\'','\'', '(','(', ')',')',
+                                            '*','*', '+','+', ',',',', ';',';', '=','=',
+
+                                            // (also allowed in userinfo)
+                                            ':',':',
+                                        }
+                                    )
+                                ) {
+                                    userInfo.push_back(c);
+                                } else {
+                                    return false;
+                                }
+                            }
+                        } break;
+
+                        case 1: { // % ...
+                            decoderState = 2;
+                            decodedCharacter <<= 4;
+                            if (IsCharacterInSet(c, {'0','9'})) {
+                                decodedCharacter += (int)(c - '0');
+                            } else if (IsCharacterInSet(c, {'A','F'})) {
+                                decodedCharacter += (int)(c - 'A') + 10;
+                            } else {
+                                return false;
+                            }
+                        } break;
+
+                        case 2: { // %[0-9A-F] ...
+                            decoderState = 0;
+                            decodedCharacter <<= 4;
+                            if (IsCharacterInSet(c, {'0','9'})) {
+                                decodedCharacter += (int)(c - '0');
+                            } else if (IsCharacterInSet(c, {'A','F'})) {
+                                decodedCharacter += (int)(c - 'A') + 10;
+                            } else {
+                                return false;
+                            }
+                            userInfo.push_back((char)decodedCharacter);
+                        } break;
+                    }
+                }
                 hostPortString = authorityString.substr(userInfoDelimiter + 1);
             }
 
