@@ -311,6 +311,44 @@ TEST(UriTests, ParseFromStringUserInfoBarelyLegal) {
     }
 }
 
+TEST(UriTests, ParseFromStringHostIllegalCharacters) {
+    const std::vector< std::string > testVectors{
+        {"//%X@www.example.com/"},
+        {"//@www:example.com/"},
+        {"//[vX.:]/"},
+    };
+    size_t index = 0;
+    for (const auto& testVector : testVectors) {
+        Uri::Uri uri;
+        ASSERT_FALSE(uri.ParseFromString(testVector)) << index;
+        ++index;
+    }
+}
+
+TEST(UriTests, ParseFromStringHostBarelyLegal) {
+    struct TestVector {
+        std::string uriString;
+        std::string host;
+    };
+    const std::vector< TestVector > testVectors{
+        {"//%41/", "A"},
+        {"///", ""},
+        {"//!/", "!"},
+        {"//'/", "'"},
+        {"//(/", "("},
+        {"//;/", ";"},
+        {"//1.2.3.4/", "1.2.3.4"},
+        {"//[v7.:]/", "[v7.:]"},
+    };
+    size_t index = 0;
+    for (const auto& testVector : testVectors) {
+        Uri::Uri uri;
+        ASSERT_TRUE(uri.ParseFromString(testVector.uriString)) << index;
+        ASSERT_EQ(testVector.host, uri.GetHost());
+        ++index;
+    }
+}
+
 TEST(UriTests, ParseFromStringDontMisinterpretColonInAuthorityAsSchemeDelimiter) {
     const std::vector< std::string > testVectors{
         {"//foo:bar@www.example.com/"},
