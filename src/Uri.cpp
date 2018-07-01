@@ -144,6 +144,93 @@ namespace {
     }
 
     /**
+     * This class can take in a percent-encoded character,
+     * decode it, and also detect if there are any problems in the encoding.
+     */
+    class PercentEncodedCharacterDecoder {
+        // Methods
+    public:
+        /**
+         * This method inputs the next encoded character.
+         *
+         * @param[in] c
+         *     This is the next encoded character to give to the decoder.
+         *
+         * @return
+         *     An indication of whether or not the encoded character
+         *     was accepted is returned.
+         */
+        bool NextEncodedCharacter(char c) {
+            switch(decoderState_) {
+                case 0: { // % ...
+                    decoderState_ = 1;
+                    decodedCharacter_ <<= 4;
+                    if (IsCharacterInSet(c, {'0','9'})) {
+                        decodedCharacter_ += (int)(c - '0');
+                    } else if (IsCharacterInSet(c, {'A','F'})) {
+                        decodedCharacter_ += (int)(c - 'A') + 10;
+                    } else {
+                        return false;
+                    }
+                } break;
+
+                case 1: { // %[0-9A-F] ...
+                    decoderState_ = 2;
+                    decodedCharacter_ <<= 4;
+                    if (IsCharacterInSet(c, {'0','9'})) {
+                        decodedCharacter_ += (int)(c - '0');
+                    } else if (IsCharacterInSet(c, {'A','F'})) {
+                        decodedCharacter_ += (int)(c - 'A') + 10;
+                    } else {
+                        return false;
+                    }
+                } break;
+
+                default: break;
+            }
+            return true;
+        }
+
+        /**
+         * This method checks to see if the decoder is done
+         * and has decoded the encoded character.
+         *
+         * @return
+         *     An indication of whether or not the decoder is done
+         *     and has decoded the encoded character is returned.
+         */
+        bool Done() const {
+            return (decoderState_ == 2);
+        }
+
+        /**
+         * This method returns the decoded character, once
+         * the decoder is done.
+         *
+         * @return
+         *     The decoded character is returned.
+         */
+        char GetDecodedCharacter() const {
+            return (char)decodedCharacter_;
+        }
+
+        // Properties
+    private:
+        /**
+         * This is the decoded character.
+         */
+        int decodedCharacter_ = 0;
+
+        /**
+         * This is the current state of the decoder's state machine.
+         * - 0: we haven't yet received the first hex digit.
+         * - 1: we received the first hex digit but not the second.
+         * - 2: we received both hex digits
+         */
+        size_t decoderState_ = 0;
+    };
+
+    /**
      * This method checks and decodes the given path segment.
      *
      * @param[in,out] segment
@@ -159,10 +246,12 @@ namespace {
         segment.clear();
         size_t decoderState = 0;
         int decodedCharacter = 0;
+        PercentEncodedCharacterDecoder pecDecoder;
         for (const auto c: originalSegment) {
             switch(decoderState) {
                 case 0: { // default
                     if (c == '%') {
+                        pecDecoder = PercentEncodedCharacterDecoder();
                         decoderState = 1;
                     } else {
                         if (
@@ -191,28 +280,13 @@ namespace {
                 } break;
 
                 case 1: { // % ...
-                    decoderState = 2;
-                    decodedCharacter <<= 4;
-                    if (IsCharacterInSet(c, {'0','9'})) {
-                        decodedCharacter += (int)(c - '0');
-                    } else if (IsCharacterInSet(c, {'A','F'})) {
-                        decodedCharacter += (int)(c - 'A') + 10;
-                    } else {
+                    if (!pecDecoder.NextEncodedCharacter(c)) {
                         return false;
                     }
-                } break;
-
-                case 2: { // %[0-9A-F] ...
-                    decoderState = 0;
-                    decodedCharacter <<= 4;
-                    if (IsCharacterInSet(c, {'0','9'})) {
-                        decodedCharacter += (int)(c - '0');
-                    } else if (IsCharacterInSet(c, {'A','F'})) {
-                        decodedCharacter += (int)(c - 'A') + 10;
-                    } else {
-                        return false;
+                    if (pecDecoder.Done()) {
+                        decoderState = 0;
+                        segment.push_back((char)pecDecoder.GetDecodedCharacter());
                     }
-                    segment.push_back((char)decodedCharacter);
                 } break;
             }
         }
@@ -235,10 +309,12 @@ namespace {
         queryOrFragment.clear();
         size_t decoderState = 0;
         int decodedCharacter = 0;
+        PercentEncodedCharacterDecoder pecDecoder;
         for (const auto c: originalQueryOrFragment) {
             switch(decoderState) {
                 case 0: { // default
                     if (c == '%') {
+                        pecDecoder = PercentEncodedCharacterDecoder();
                         decoderState = 1;
                     } else {
                         if (
@@ -270,28 +346,13 @@ namespace {
                 } break;
 
                 case 1: { // % ...
-                    decoderState = 2;
-                    decodedCharacter <<= 4;
-                    if (IsCharacterInSet(c, {'0','9'})) {
-                        decodedCharacter += (int)(c - '0');
-                    } else if (IsCharacterInSet(c, {'A','F'})) {
-                        decodedCharacter += (int)(c - 'A') + 10;
-                    } else {
+                    if (!pecDecoder.NextEncodedCharacter(c)) {
                         return false;
                     }
-                } break;
-
-                case 2: { // %[0-9A-F] ...
-                    decoderState = 0;
-                    decodedCharacter <<= 4;
-                    if (IsCharacterInSet(c, {'0','9'})) {
-                        decodedCharacter += (int)(c - '0');
-                    } else if (IsCharacterInSet(c, {'A','F'})) {
-                        decodedCharacter += (int)(c - 'A') + 10;
-                    } else {
-                        return false;
+                    if (pecDecoder.Done()) {
+                        decoderState = 0;
+                        queryOrFragment.push_back((char)pecDecoder.GetDecodedCharacter());
                     }
-                    queryOrFragment.push_back((char)decodedCharacter);
                 } break;
             }
         }
@@ -418,10 +479,12 @@ namespace Uri {
                 const auto userInfoEncoded = authorityString.substr(0, userInfoDelimiter);
                 size_t decoderState = 0;
                 int decodedCharacter = 0;
+                PercentEncodedCharacterDecoder pecDecoder;
                 for (const auto c: userInfoEncoded) {
                     switch(decoderState) {
                         case 0: { // default
                             if (c == '%') {
+                                pecDecoder = PercentEncodedCharacterDecoder();
                                 decoderState = 1;
                             } else {
                                 if (
@@ -450,28 +513,13 @@ namespace Uri {
                         } break;
 
                         case 1: { // % ...
-                            decoderState = 2;
-                            decodedCharacter <<= 4;
-                            if (IsCharacterInSet(c, {'0','9'})) {
-                                decodedCharacter += (int)(c - '0');
-                            } else if (IsCharacterInSet(c, {'A','F'})) {
-                                decodedCharacter += (int)(c - 'A') + 10;
-                            } else {
+                            if (!pecDecoder.NextEncodedCharacter(c)) {
                                 return false;
                             }
-                        } break;
-
-                        case 2: { // %[0-9A-F] ...
-                            decoderState = 0;
-                            decodedCharacter <<= 4;
-                            if (IsCharacterInSet(c, {'0','9'})) {
-                                decodedCharacter += (int)(c - '0');
-                            } else if (IsCharacterInSet(c, {'A','F'})) {
-                                decodedCharacter += (int)(c - 'A') + 10;
-                            } else {
-                                return false;
+                            if (pecDecoder.Done()) {
+                                decoderState = 0;
+                                userInfo.push_back((char)pecDecoder.GetDecodedCharacter());
                             }
-                            userInfo.push_back((char)decodedCharacter);
                         } break;
                     }
                 }
@@ -483,6 +531,7 @@ namespace Uri {
             size_t decoderState = 0;
             int decodedCharacter = 0;
             host.clear();
+            PercentEncodedCharacterDecoder pecDecoder;
             for (const auto c: hostPortString) {
                 switch(decoderState) {
                     case 0: { // first character
@@ -497,6 +546,7 @@ namespace Uri {
 
                     case 1: { // reg-name or IPv4Address
                         if (c == '%') {
+                            pecDecoder = PercentEncodedCharacterDecoder();
                             decoderState = 2;
                         } else if (c == ':') {
                             decoderState = 9;
@@ -527,28 +577,13 @@ namespace Uri {
                     } break;
 
                     case 2: { // % ...
-                        decoderState = 3;
-                        decodedCharacter <<= 4;
-                        if (IsCharacterInSet(c, {'0','9'})) {
-                            decodedCharacter += (int)(c - '0');
-                        } else if (IsCharacterInSet(c, {'A','F'})) {
-                            decodedCharacter += (int)(c - 'A') + 10;
-                        } else {
+                        if (!pecDecoder.NextEncodedCharacter(c)) {
                             return false;
                         }
-                    } break;
-
-                    case 3: { // %[0-9A-F] ...
-                        decoderState = 1;
-                        decodedCharacter <<= 4;
-                        if (IsCharacterInSet(c, {'0','9'})) {
-                            decodedCharacter += (int)(c - '0');
-                        } else if (IsCharacterInSet(c, {'A','F'})) {
-                            decodedCharacter += (int)(c - 'A') + 10;
-                        } else {
-                            return false;
+                        if (pecDecoder.Done()) {
+                            decoderState = 1;
+                            host.push_back((char)pecDecoder.GetDecodedCharacter());
                         }
-                        host.push_back((char)decodedCharacter);
                     } break;
 
                     case 4: { // IP-literal
