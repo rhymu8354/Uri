@@ -330,7 +330,11 @@ namespace Uri {
 
     bool Uri::ParseFromString(const std::string& uriString) {
         // First parse the scheme.
-        const auto schemeEnd = uriString.find(':');
+        auto authorityDelimiter = uriString.find("//");
+        if (authorityDelimiter == std::string::npos) {
+            authorityDelimiter = uriString.length();
+        }
+        const auto schemeEnd = uriString.substr(0, authorityDelimiter).find(':');
         std::string rest;
         if (schemeEnd == std::string::npos) {
             impl_->scheme.clear();
