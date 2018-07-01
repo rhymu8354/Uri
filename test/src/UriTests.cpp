@@ -366,3 +366,55 @@ TEST(UriTests, ParseFromStringDontMisinterpretColonInOtherPlacesAsSchemeDelimite
         ++index;
     }
 }
+
+TEST(UriTests, ParseFromStringPathIllegalCharacters) {
+    const std::vector< std::string > testVectors{
+        {"http://www.example.com/foo[bar"},
+        {"http://www.example.com/]bar"},
+        {"http://www.example.com/foo]"},
+        {"http://www.example.com/["},
+        {"http://www.example.com/abc/foo]"},
+        {"http://www.example.com/abc/["},
+        {"http://www.example.com/foo]/abc"},
+        {"http://www.example.com/[/abc"},
+        {"http://www.example.com/foo]/"},
+        {"http://www.example.com/[/"},
+        {"/foo[bar"},
+        {"/]bar"},
+        {"/foo]"},
+        {"/["},
+        {"/abc/foo]"},
+        {"/abc/["},
+        {"/foo]/abc"},
+        {"/[/abc"},
+        {"/foo]/"},
+        {"/[/"},
+    };
+    size_t index = 0;
+    for (const auto& testVector : testVectors) {
+        Uri::Uri uri;
+        ASSERT_FALSE(uri.ParseFromString(testVector)) << index;
+        ++index;
+    }
+}
+
+TEST(UriTests, ParseFromStringPathBarelyLegal) {
+    struct TestVector {
+        std::string uriString;
+        std::vector< std::string > path;
+    };
+    const std::vector< TestVector > testVectors{
+        {"/:/foo", {"", ":", "foo"}},
+        {"bob@/foo", {"bob@", "foo"}},
+        {"hello!", {"hello!"}},
+        {"urn:hello,%20w%6Frld", {"hello, world"}},
+        {"//example.com/foo/(bar)/", {"", "foo", "(bar)", ""}},
+    };
+    size_t index = 0;
+    for (const auto& testVector : testVectors) {
+        Uri::Uri uri;
+        ASSERT_TRUE(uri.ParseFromString(testVector.uriString)) << index;
+        ASSERT_EQ(testVector.path, uri.GetPath());
+        ++index;
+    }
+}

@@ -185,6 +185,82 @@ namespace Uri {
         // Methods
 
         /**
+         * This method checks and decodes the given path segment.
+         *
+         * @param[in,out] segment
+         *     On input, this is the path segment to check and decode.
+         *     On output, this is the decoded path segment.
+         *
+         * @return
+         *     An indication of whether or not the path segment
+         *     passed all checks and was decoded successfully is returned.
+         */
+        bool DecodePathSegment(std::string& segment) {
+            const auto originalSegment = std::move(segment);
+            segment.clear();
+            size_t decoderState = 0;
+            int decodedCharacter = 0;
+            for (const auto c: originalSegment) {
+                switch(decoderState) {
+                    case 0: { // default
+                        if (c == '%') {
+                            decoderState = 1;
+                        } else {
+                            if (
+                                IsCharacterInSet(
+                                    c,
+                                    {
+                                        // unreserved
+                                        'a','z', 'A','Z', // ALPHA
+                                        '0','9', // DIGIT
+                                        '-','-', '.','.', '_','_', '~','~',
+
+                                        // sub-delims
+                                        '!','!', '$','$', '&','&', '\'','\'', '(','(', ')',')',
+                                        '*','*', '+','+', ',',',', ';',';', '=','=',
+
+                                        // (also allowed in segment or pchar)
+                                        ':',':', '@','@'
+                                    }
+                                )
+                            ) {
+                                segment.push_back(c);
+                            } else {
+                                return false;
+                            }
+                        }
+                    } break;
+
+                    case 1: { // % ...
+                        decoderState = 2;
+                        decodedCharacter <<= 4;
+                        if (IsCharacterInSet(c, {'0','9'})) {
+                            decodedCharacter += (int)(c - '0');
+                        } else if (IsCharacterInSet(c, {'A','F'})) {
+                            decodedCharacter += (int)(c - 'A') + 10;
+                        } else {
+                            return false;
+                        }
+                    } break;
+
+                    case 2: { // %[0-9A-F] ...
+                        decoderState = 0;
+                        decodedCharacter <<= 4;
+                        if (IsCharacterInSet(c, {'0','9'})) {
+                            decodedCharacter += (int)(c - '0');
+                        } else if (IsCharacterInSet(c, {'A','F'})) {
+                            decodedCharacter += (int)(c - 'A') + 10;
+                        } else {
+                            return false;
+                        }
+                        segment.push_back((char)decodedCharacter);
+                    } break;
+                }
+            }
+            return true;
+        }
+
+        /**
          * This method builds the internal path element sequence
          * by parsing it from the given path string.
          *
@@ -216,6 +292,11 @@ namespace Uri {
                         );
                         pathString = pathString.substr(pathDelimiter + 1);
                     }
+                }
+            }
+            for (auto& segment: path) {
+                if (!DecodePathSegment(segment)) {
+                    return false;
                 }
             }
             return true;
