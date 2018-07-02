@@ -1,8 +1,8 @@
-#ifndef URI_IS_CHARACTER_IN_SET_HPP
-#define URI_IS_CHARACTER_IN_SET_HPP
+#ifndef URI_CHARACTER_SET_HPP
+#define URI_CHARACTER_SET_HPP
 
 /**
- * @file IsCharacterInSet.hpp
+ * @file CharacterSet.hpp
  *
  * This module declares the Uri::IsCharacterInSet function
  * and the CharacterSet class.
@@ -119,4 +119,4 @@ namespace Uri {
 
 }
 
-#endif /* URI_IS_CHARACTER_IN_SET_HPP */
+#endif /* URI_CHARACTER_SET_HPP */

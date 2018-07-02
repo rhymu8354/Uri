@@ -6,7 +6,7 @@
  * © 2018 by Richard Walters
  */
 
-#include "IsCharacterInSet.hpp"
+#include "CharacterSet.hpp"
 #include "NormalizeCaseInsensitiveString.hpp"
 #include "PercentEncodedCharacterDecoder.hpp"
 
