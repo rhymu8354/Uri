@@ -210,9 +210,9 @@ namespace {
             } else {
                 bool check;
                 if (*isFirstCharacter) {
-                    check = Uri::IsCharacterInSet(c, ALPHA);
+                    check = ALPHA.Contains(c);
                 } else {
-                    check = Uri::IsCharacterInSet(c, SCHEME_NOT_FIRST);
+                    check = SCHEME_NOT_FIRST.Contains(c);
                 }
                 *isFirstCharacter = false;
                 return check;
@@ -244,7 +244,7 @@ namespace {
                         pecDecoder = Uri::PercentEncodedCharacterDecoder();
                         decoderState = 1;
                     } else {
-                        if (Uri::IsCharacterInSet(c, PCHAR_NOT_PCT_ENCODED)) {
+                        if (PCHAR_NOT_PCT_ENCODED.Contains(c)) {
                             segment.push_back(c);
                         } else {
                             return false;
@@ -290,7 +290,7 @@ namespace {
                         pecDecoder = Uri::PercentEncodedCharacterDecoder();
                         decoderState = 1;
                     } else {
-                        if (Uri::IsCharacterInSet(c, QUERY_OR_FRAGMENT_NOT_PCT_ENCODED)) {
+                        if (QUERY_OR_FRAGMENT_NOT_PCT_ENCODED.Contains(c)) {
                             queryOrFragment.push_back(c);
                         } else {
                             return false;
@@ -440,7 +440,7 @@ namespace Uri {
                                 pecDecoder = PercentEncodedCharacterDecoder();
                                 decoderState = 1;
                             } else {
-                                if (IsCharacterInSet(c, USER_INFO_NOT_PCT_ENCODED)) {
+                                if (USER_INFO_NOT_PCT_ENCODED.Contains(c)) {
                                     userInfo.push_back(c);
                                 } else {
                                     return false;
@@ -489,7 +489,7 @@ namespace Uri {
                         } else if (c == ':') {
                             decoderState = 8;
                         } else {
-                            if (IsCharacterInSet(c, REG_NAME_NOT_PCT_ENCODED)) {
+                            if (REG_NAME_NOT_PCT_ENCODED.Contains(c)) {
                                 host.push_back(c);
                             } else {
                                 return false;
@@ -529,7 +529,7 @@ namespace Uri {
                     case 5: { // IPvFuture: v ...
                         if (c == '.') {
                             decoderState = 6;
-                        } else if (!IsCharacterInSet(c, HEXDIG)) {
+                        } else if (!HEXDIG.Contains(c)) {
                             return false;
                         }
                         host.push_back(c);
@@ -539,7 +539,7 @@ namespace Uri {
                         host.push_back(c);
                         if (c == ']') {
                             decoderState = 7;
-                        } else if (!IsCharacterInSet(c, IPV_FUTURE_LAST_PART)) {
+                        } else if (!IPV_FUTURE_LAST_PART.Contains(c)) {
                             return false;
                         }
                     } break;

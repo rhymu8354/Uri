@@ -2,7 +2,7 @@
  * @file IsCharacterInSet.cpp
  *
  * This module contains the implementation of the
- * Uri::IsCharacterInSet function and the CharacterSet class.
+ * Uri::CharacterSet class.
  *
  * © 2018 by Richard Walters
  */
@@ -75,13 +75,6 @@ namespace Uri {
 
     bool CharacterSet::Contains(char c) const {
         return impl_->charactersInSet.find(c) != impl_->charactersInSet.end();
-    }
-
-    bool IsCharacterInSet(
-        char c,
-        const CharacterSet& characterSet
-    ) {
-        return characterSet.Contains(c);
     }
 
 }

@@ -4,8 +4,7 @@
 /**
  * @file CharacterSet.hpp
  *
- * This module declares the Uri::IsCharacterInSet function
- * and the CharacterSet class.
+ * This module declares the Uri::CharacterSet class.
  *
  * © 2018 by Richard Walters
  */
@@ -97,25 +96,6 @@ namespace Uri {
          */
         std::unique_ptr< struct Impl > impl_;
     };
-
-    /**
-     * This function determines whether or not the given character
-     * is in the given character set.
-     *
-     * @param[in] c
-     *     This is the character to check.
-     *
-     * @param[in] characterSet
-     *     This is the set of characters that are allowed.
-     *
-     * @return
-     *     An indication of whether or not the given character
-     *     is in the given character set is returned.
-     */
-    bool IsCharacterInSet(
-        char c,
-        const CharacterSet& characterSet
-    );
 
 }
 
