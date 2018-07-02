@@ -42,12 +42,10 @@ namespace Uri {
         int decodedCharacter = 0;
 
         /**
-         * This is the current state of the decoder's state machine.
-         * - 0: we haven't yet received the first hex digit.
-         * - 1: we received the first hex digit but not the second.
-         * - 2: we received both hex digits
+         * This is the number of digits that we still need to shift in
+         * to decode the character.
          */
-        size_t decoderState = 0;
+        size_t digitsLeft = 2;
 
         // Methods
 
@@ -87,28 +85,15 @@ namespace Uri {
     }
 
     bool PercentEncodedCharacterDecoder::NextEncodedCharacter(char c) {
-        switch(impl_->decoderState) {
-            case 0: { // % ...
-                impl_->decoderState = 1;
-                if (!impl_->ShiftInHexDigit(c)) {
-                    return false;
-                }
-            } break;
-
-            case 1: { // %[0-9A-F] ...
-                impl_->decoderState = 2;
-                if (!impl_->ShiftInHexDigit(c)) {
-                    return false;
-                }
-            } break;
-
-            default: break;
+        if (!impl_->ShiftInHexDigit(c)) {
+            return false;
         }
+        --impl_->digitsLeft;
         return true;
     }
 
     bool PercentEncodedCharacterDecoder::Done() const {
-        return (impl_->decoderState == 2);
+        return (impl_->digitsLeft == 0);
     }
 
     char PercentEncodedCharacterDecoder::GetDecodedCharacter() const {
