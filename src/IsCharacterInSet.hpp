@@ -4,7 +4,8 @@
 /**
  * @file IsCharacterInSet.hpp
  *
- * This module declares the Uri::IsCharacterInSet class.
+ * This module declares the Uri::IsCharacterInSet function
+ * and the CharacterSet class.
  *
  * © 2018 by Richard Walters
  */
