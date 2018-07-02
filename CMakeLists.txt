@@ -8,11 +8,13 @@ set(This Uri)
 set(Headers
     include/Uri/Uri.hpp
     src/IsCharacterInSet.hpp
+    src/NormalizeCaseInsensitiveString.hpp
     src/PercentEncodedCharacterDecoder.hpp
 )
 
 set(Sources
     src/IsCharacterInSet.cpp
+    src/NormalizeCaseInsensitiveString.cpp
     src/PercentEncodedCharacterDecoder.cpp
     src/Uri.cpp
 )
