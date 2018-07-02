@@ -21,7 +21,13 @@ namespace {
      * This is the character set containing just the upper-case
      * letters 'A' through 'F', used in upper-case hexadecimal.
      */
-    const Uri::CharacterSet HEX('A', 'F');
+    const Uri::CharacterSet HEX_UPPER('A', 'F');
+
+    /**
+     * This is the character set containing just the lower-case
+     * letters 'a' through 'f', used in lower-case hexadecimal.
+     */
+    const Uri::CharacterSet HEX_LOWER('a', 'f');
 
 }
 
@@ -58,8 +64,10 @@ namespace Uri {
                 impl_->decodedCharacter <<= 4;
                 if (IsCharacterInSet(c, DIGIT)) {
                     impl_->decodedCharacter += (int)(c - '0');
-                } else if (IsCharacterInSet(c, HEX)) {
+                } else if (IsCharacterInSet(c, HEX_UPPER)) {
                     impl_->decodedCharacter += (int)(c - 'A') + 10;
+                } else if (IsCharacterInSet(c, HEX_LOWER)) {
+                    impl_->decodedCharacter += (int)(c - 'a') + 10;
                 } else {
                     return false;
                 }
@@ -70,8 +78,10 @@ namespace Uri {
                 impl_->decodedCharacter <<= 4;
                 if (IsCharacterInSet(c, DIGIT)) {
                     impl_->decodedCharacter += (int)(c - '0');
-                } else if (IsCharacterInSet(c, HEX)) {
+                } else if (IsCharacterInSet(c, HEX_UPPER)) {
                     impl_->decodedCharacter += (int)(c - 'A') + 10;
+                } else if (IsCharacterInSet(c, HEX_LOWER)) {
+                    impl_->decodedCharacter += (int)(c - 'a') + 10;
                 } else {
                     return false;
                 }

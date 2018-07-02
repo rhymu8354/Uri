@@ -38,7 +38,8 @@ namespace {
      */
     const Uri::CharacterSet HEXDIG{
         Uri::CharacterSet('0', '9'),
-        Uri::CharacterSet('A', 'F')
+        Uri::CharacterSet('A', 'F'),
+        Uri::CharacterSet('a', 'f')
     };
 
     /**
