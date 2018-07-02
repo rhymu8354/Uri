@@ -7,6 +7,7 @@
  */
 
 #include "IsCharacterInSet.hpp"
+#include "NormalizeCaseInsensitiveString.hpp"
 #include "PercentEncodedCharacterDecoder.hpp"
 
 #include <functional>
@@ -467,6 +468,7 @@ namespace Uri {
             int decodedCharacter = 0;
             host.clear();
             PercentEncodedCharacterDecoder pecDecoder;
+            bool hostIsRegName = false;
             for (const auto c: hostPortString) {
                 switch(decoderState) {
                     case 0: { // first character
@@ -476,6 +478,7 @@ namespace Uri {
                             break;
                         } else {
                             decoderState = 1;
+                            hostIsRegName = true;
                         }
                     }
 
@@ -555,6 +558,9 @@ namespace Uri {
                     } break;
                 }
             }
+            if (hostIsRegName) {
+                host = NormalizeCaseInsensitiveString(host);
+            }
             if (portString.empty()) {
                 hasPort = false;
             } else {
@@ -600,6 +606,7 @@ namespace Uri {
             ) {
                 return false;
             }
+            impl_->scheme = NormalizeCaseInsensitiveString(impl_->scheme);
             rest = uriString.substr(schemeEnd + 1);
         }
 
