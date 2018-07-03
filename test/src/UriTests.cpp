@@ -646,3 +646,13 @@ TEST(UriTests, ConstructNormalizeAndCompareEquivalentUris) {
     uri2.NormalizePath();
     ASSERT_EQ(uri1, uri2);
 }
+
+TEST(UriTests, EmptyPathInUriWithAuthorityIsEquivalentToSlashOnlyPath) {
+    Uri::Uri uri1, uri2;
+    ASSERT_TRUE(uri1.ParseFromString("http://example.com"));
+    ASSERT_TRUE(uri2.ParseFromString("http://example.com/"));
+    ASSERT_EQ(uri1, uri2);
+    ASSERT_TRUE(uri1.ParseFromString("urn:"));
+    ASSERT_TRUE(uri2.ParseFromString("urn:/"));
+    ASSERT_EQ(uri1, uri2);
+}
