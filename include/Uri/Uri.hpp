@@ -25,9 +25,9 @@ namespace Uri {
     public:
         ~Uri();
         Uri(const Uri&) = delete;
-        Uri(Uri&&) = delete;
+        Uri(Uri&&);
         Uri& operator=(const Uri&) = delete;
-        Uri& operator=(Uri&&) = delete;
+        Uri& operator=(Uri&&);
 
         // Public methods
     public:
