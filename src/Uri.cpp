@@ -737,71 +737,44 @@ namespace Uri {
     }
 
     void Uri::NormalizePath() {
-        /*
-         * This is a straight-up implementation of the
-         * algorithm from section 5.2.4 of
-         * RFC 3986 (https://tools.ietf.org/html/rfc3986).
-         */
-        // Step 1
         auto oldPath = std::move(impl_->path);
         impl_->path.clear();
-        // Step 2
-        while (!oldPath.empty()) {
-            // Step 2A
-            if (
-                (oldPath[0] == ".")
-                || (oldPath[0] == "..")
-            ) {
-                oldPath.erase(oldPath.begin());
-            } else
-
-            // Step 2B
-            if (
-                (oldPath.size() >= 2)
-                && (oldPath[0] == "")
-                && (oldPath[1] == ".")
-            ) {
-                oldPath.erase(oldPath.begin() + 1);
-            } else
-
-            // Step 2C
-            if (
-                (oldPath.size() >= 2)
-                && (oldPath[0] == "")
-                && (oldPath[1] == "..")
-            ) {
-                oldPath.erase(oldPath.begin() + 1);
+        bool isAbsolute = (
+            !oldPath.empty()
+            && oldPath[0].empty()
+        );
+        bool atDirectoryLevel = false;
+        for (const auto segment: oldPath) {
+            if (segment == ".") {
+                atDirectoryLevel = true;
+            } else if (segment == "..") {
                 if (!impl_->path.empty()) {
-                    impl_->path.pop_back();
-                }
-            } else
-
-            // Step 2D
-            if (
-                (oldPath.size() == 1)
-                && (
-                    (oldPath[0] == ".")
-                    || (oldPath[0] == "..")
-                )
-            ) {
-                oldPath.erase(oldPath.begin());
-            } else
-
-            // Step 2E
-            {
-                if (oldPath[0] == "") {
-                    impl_->path.push_back("");
-                    oldPath.erase(oldPath.begin());
-                }
-                if (!oldPath.empty()) {
-                    impl_->path.push_back(oldPath[0]);
-                    if (oldPath.size() > 1) {
-                        oldPath[0] = "";
-                    } else {
-                        oldPath.erase(oldPath.begin());
+                    if (
+                        !isAbsolute
+                        || (impl_->path.size() > 1)
+                    ) {
+                        impl_->path.pop_back();
                     }
                 }
+                atDirectoryLevel = true;
+            } else {
+                if (
+                    !atDirectoryLevel
+                    || !segment.empty()
+                ) {
+                    impl_->path.push_back(segment);
+                }
+                atDirectoryLevel = segment.empty();
             }
+        }
+        if (
+            atDirectoryLevel
+            && (
+                !impl_->path.empty()
+                && !impl_->path.back().empty()
+            )
+        ) {
+            impl_->path.push_back("");
         }
     }
 
