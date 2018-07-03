@@ -584,3 +584,22 @@ TEST(UriTests, ParseFromStringPathsWithPercentEncodedCharacters) {
         ++index;
     }
 }
+
+TEST(UriTests, NormalizePath) {
+    struct TestVector {
+        std::string uriString;
+        std::vector< std::string > normalizedPathSegments;
+    };
+    const std::vector< TestVector > testVectors{
+        {"/a/b/c/./../../g", {"", "a", "g"}},
+        {"mid/content=5/../6", {"mid", "6"}},
+    };
+    size_t index = 0;
+    for (const auto& testVector : testVectors) {
+        Uri::Uri uri;
+        ASSERT_TRUE(uri.ParseFromString(testVector.uriString)) << index;
+        uri.NormalizePath();
+        ASSERT_EQ(testVector.normalizedPathSegments, uri.GetPath());
+        ++index;
+    }
+}

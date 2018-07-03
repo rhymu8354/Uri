@@ -163,6 +163,14 @@ namespace Uri {
          */
         std::string GetFragment() const;
 
+        /**
+         * This method applies the "remove_dot_segments" routine talked about
+         * in RFC 3986 (https://tools.ietf.org/html/rfc3986) to the path
+         * segments of the URI, in order to normalize the path
+         * (apply and remove "." and ".." segments).
+         */
+        void NormalizePath();
+
         // Private properties
     private:
         /**
