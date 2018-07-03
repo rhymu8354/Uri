@@ -759,7 +759,9 @@ namespace Uri {
                 && (oldPath[1] == "..")
             ) {
                 oldPath.erase(oldPath.begin() + 1);
-                impl_->path.pop_back();
+                if (!impl_->path.empty()) {
+                    impl_->path.pop_back();
+                }
             } else
 
             // Step 2D

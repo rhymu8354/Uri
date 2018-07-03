@@ -593,13 +593,45 @@ TEST(UriTests, NormalizePath) {
     const std::vector< TestVector > testVectors{
         {"/a/b/c/./../../g", {"", "a", "g"}},
         {"mid/content=5/../6", {"mid", "6"}},
+        {"http://example.com/a/../b", {"", "b"}},
+        {"http://example.com/../b", {"", "b"}},
+        {"http://example.com/a/../b", {"", "b"}},
+        {"http://example.com/a/../../b", {"", "b"}},
+        {"./a/b", {"a", "b"}},
+        {"..", {}},
+        {"/", {""}},
+        {"a/b/..", {"a"}},
+        {"a/b/.", {"a", "b"}},
+        {"a/b/./c", {"a", "b", "c"}},
+        {"a/b/./c/", {"a", "b", "c", ""}},
+        {"/a/b/..", {"", "a"}},
+        {"/a/b/.", {"", "a", "b"}},
+        {"/a/b/./c", {"", "a", "b", "c"}},
+        {"/a/b/./c/", {"", "a", "b", "c", ""}},
+        {"./a/b/..", {"a"}},
+        {"./a/b/.", {"a", "b"}},
+        {"./a/b/./c", {"a", "b", "c"}},
+        {"./a/b/./c/", {"a", "b", "c", ""}},
+        {"../a/b/..", {"a"}},
+        {"../a/b/.", {"a", "b"}},
+        {"../a/b/./c", {"a", "b", "c"}},
+        {"../a/b/./c/", {"a", "b", "c", ""}},
+        {"../a/b/../c", {"a", "c"}},
+        {"../a/b/./../c/", {"a", "c", ""}},
+        {"../a/b/./../c", {"a", "c"}},
+        {"../a/b/./../c/", {"a", "c", ""}},
+        {"../a/b/.././c/", {"a", "c", ""}},
+        {"../a/b/.././c", {"a", "c"}},
+        {"../a/b/.././c/", {"a", "c", ""}},
+        {"/./c/d", {"", "c", "d"}},
+        {"/../c/d", {"", "c", "d"}},
     };
     size_t index = 0;
     for (const auto& testVector : testVectors) {
         Uri::Uri uri;
         ASSERT_TRUE(uri.ParseFromString(testVector.uriString)) << index;
         uri.NormalizePath();
-        ASSERT_EQ(testVector.normalizedPathSegments, uri.GetPath());
+        ASSERT_EQ(testVector.normalizedPathSegments, uri.GetPath()) << index;
         ++index;
     }
 }
