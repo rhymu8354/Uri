@@ -647,12 +647,66 @@ TEST(UriTests, ConstructNormalizeAndCompareEquivalentUris) {
     ASSERT_EQ(uri1, uri2);
 }
 
+TEST(UriTests, ReferenceResolution) {
+    struct TestVector {
+        std::string baseString;
+        std::string relativeReferenceString;
+        std::string targetString;
+    };
+    const std::vector< TestVector > testVectors{
+        // These are all taken from section 5.4.1
+        // of RFC 3986 (https://tools.ietf.org/html/rfc3986).
+        {"http://a/b/c/d;p?q", "g:h", "g:h"},
+        {"http://a/b/c/d;p?q", "g", "http://a/b/c/g"},
+        {"http://a/b/c/d;p?q", "./g", "http://a/b/c/g"},
+        {"http://a/b/c/d;p?q", "g/", "http://a/b/c/g/"},
+        {"http://a/b/c/d;p?q", "//g", "http://g"},
+        {"http://a/b/c/d;p?q", "?y", "http://a/b/c/d;p?y"},
+        {"http://a/b/c/d;p?q", "g?y", "http://a/b/c/g?y"},
+        {"http://a/b/c/d;p?q", "#s", "http://a/b/c/d;p?q#s"},
+        {"http://a/b/c/d;p?q", "g#s", "http://a/b/c/g#s"},
+        {"http://a/b/c/d;p?q", "g?y#s", "http://a/b/c/g?y#s"},
+        {"http://a/b/c/d;p?q", ";x", "http://a/b/c/;x"},
+        {"http://a/b/c/d;p?q", "g;x", "http://a/b/c/g;x"},
+        {"http://a/b/c/d;p?q", "g;x?y#s", "http://a/b/c/g;x?y#s"},
+        {"http://a/b/c/d;p?q", "", "http://a/b/c/d;p?q"},
+        {"http://a/b/c/d;p?q", ".", "http://a/b/c/"},
+        {"http://a/b/c/d;p?q", "./", "http://a/b/c/"},
+        {"http://a/b/c/d;p?q", "..", "http://a/b/"},
+        {"http://a/b/c/d;p?q", "../", "http://a/b/"},
+        {"http://a/b/c/d;p?q", "../g", "http://a/b/g"},
+        {"http://a/b/c/d;p?q", "../..", "http://a"},
+        {"http://a/b/c/d;p?q", "../../", "http://a"},
+        {"http://a/b/c/d;p?q", "../../g", "http://a/g"},
+
+        // Here are some examples of our own.
+        {"http://example.com", "foo", "http://example.com/foo"},
+        {"http://example.com/", "foo", "http://example.com/foo"},
+        {"http://example.com", "foo/", "http://example.com/foo/"},
+        {"http://example.com/", "foo/", "http://example.com/foo/"},
+        {"http://example.com", "/foo", "http://example.com/foo"},
+        {"http://example.com/", "/foo", "http://example.com/foo"},
+        {"http://example.com", "/foo/", "http://example.com/foo/"},
+        {"http://example.com/", "/foo/", "http://example.com/foo/"},
+    };
+    size_t index = 0;
+    for (const auto& testVector : testVectors) {
+        Uri::Uri baseUri, relativeReferenceUri, expectedTargetUri;
+        ASSERT_TRUE(baseUri.ParseFromString(testVector.baseString));
+        ASSERT_TRUE(relativeReferenceUri.ParseFromString(testVector.relativeReferenceString)) << index;
+        ASSERT_TRUE(expectedTargetUri.ParseFromString(testVector.targetString)) << index;
+        const auto actualTargetUri = baseUri.Resolve(relativeReferenceUri);
+        ASSERT_EQ(expectedTargetUri, actualTargetUri) << index;
+        ++index;
+    }
+}
+
 TEST(UriTests, EmptyPathInUriWithAuthorityIsEquivalentToSlashOnlyPath) {
     Uri::Uri uri1, uri2;
     ASSERT_TRUE(uri1.ParseFromString("http://example.com"));
     ASSERT_TRUE(uri2.ParseFromString("http://example.com/"));
     ASSERT_EQ(uri1, uri2);
-    ASSERT_TRUE(uri1.ParseFromString("urn:"));
-    ASSERT_TRUE(uri2.ParseFromString("urn:/"));
+    ASSERT_TRUE(uri1.ParseFromString("//example.com"));
+    ASSERT_TRUE(uri2.ParseFromString("//example.com/"));
     ASSERT_EQ(uri1, uri2);
 }

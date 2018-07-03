@@ -195,6 +195,23 @@ namespace Uri {
          */
         void NormalizePath();
 
+        /**
+         * This method resolves the given relative reference, based on the given
+         * base URI, returning the resolved target URI.
+         *
+         * @param[in] relativeReference
+         *     This describes how to get to the target starting at the base.
+         *
+         * @return
+         *     The resolved target URI is returned.
+         *
+         * @note
+         *     It only makes sense to call this method on an absolute URI
+         *     (in which I mean, the base URI should be absolute,
+         *     as in IsRelativeReference() should return false).
+         */
+        Uri Resolve(const Uri& relativeReference) const;
+
         // Private properties
     private:
         /**

@@ -10,6 +10,7 @@
 #include "NormalizeCaseInsensitiveString.hpp"
 #include "PercentEncodedCharacterDecoder.hpp"
 
+#include <algorithm>
 #include <functional>
 #include <inttypes.h>
 #include <memory>
@@ -673,10 +674,10 @@ namespace Uri {
             return false;
         }
 
-        // Handle special case of absolute URI with empty
+        // Handle special case of URI with authority and empty
         // path -- treat the same as "/" path.
         if (
-            !impl_->scheme.empty()
+            !impl_->host.empty()
             && impl_->path.empty()
         ) {
             impl_->path.push_back("");
@@ -789,9 +790,7 @@ namespace Uri {
             // Step 2E
             {
                 if (oldPath[0] == "") {
-                    if (impl_->path.empty()) {
-                        impl_->path.push_back("");
-                    }
+                    impl_->path.push_back("");
                     oldPath.erase(oldPath.begin());
                 }
                 if (!oldPath.empty()) {
@@ -806,4 +805,66 @@ namespace Uri {
         }
     }
 
+    Uri Uri::Resolve(const Uri& relativeReference) const {
+        // Resolve the reference by following the algorithm
+        // from section 5.2.2 in
+        // RFC 3986 (https://tools.ietf.org/html/rfc3986).
+        Uri target;
+        if (!relativeReference.impl_->scheme.empty()) {
+            target.impl_->scheme = relativeReference.impl_->scheme;
+            target.impl_->host = relativeReference.impl_->host;
+            target.impl_->userInfo = relativeReference.impl_->userInfo;
+            target.impl_->hasPort = relativeReference.impl_->hasPort;
+            target.impl_->port = relativeReference.impl_->port;
+            target.impl_->path = relativeReference.impl_->path;
+            target.NormalizePath();
+            target.impl_->query = relativeReference.impl_->query;
+        } else {
+            if (!relativeReference.impl_->host.empty()) {
+                target.impl_->host = relativeReference.impl_->host;
+                target.impl_->userInfo = relativeReference.impl_->userInfo;
+                target.impl_->hasPort = relativeReference.impl_->hasPort;
+                target.impl_->port = relativeReference.impl_->port;
+                target.impl_->path = relativeReference.impl_->path;
+                target.NormalizePath();
+                target.impl_->query = relativeReference.impl_->query;
+            } else {
+                if (relativeReference.impl_->path.empty()) {
+                    target.impl_->path = impl_->path;
+                    if (!relativeReference.impl_->query.empty()) {
+                        target.impl_->query = relativeReference.impl_->query;
+                    } else {
+                        target.impl_->query = impl_->query;
+                    }
+                } else {
+                    if (
+                        !relativeReference.impl_->path.empty()
+                        && (relativeReference.impl_->path[0] == "")
+                    ) {
+                        target.impl_->path = relativeReference.impl_->path;
+                        target.NormalizePath();
+                    } else {
+                        target.impl_->path = impl_->path;
+                        if (target.impl_->path.size() > 1) {
+                            target.impl_->path.pop_back();
+                        }
+                        std::copy(
+                            relativeReference.impl_->path.begin(),
+                            relativeReference.impl_->path.end(),
+                            std::back_inserter(target.impl_->path)
+                        );
+                        target.NormalizePath();
+                    }
+                    target.impl_->query = relativeReference.impl_->query;
+                }
+                target.impl_->host = impl_->host;
+                target.impl_->userInfo = impl_->userInfo;
+                target.impl_->hasPort = impl_->hasPort;
+                target.impl_->port = impl_->port;
+            }
+            target.impl_->scheme = impl_->scheme;
+        }
+        target.impl_->fragment = relativeReference.impl_->fragment;
+        return target;
+    }
 }
