@@ -586,6 +586,28 @@ namespace Uri {
     {
     }
 
+    bool Uri::operator==(const Uri& other) const {
+        return (
+            (impl_->scheme == other.impl_->scheme)
+            && (impl_->userInfo == other.impl_->userInfo)
+            && (impl_->host == other.impl_->host)
+            && (
+                (!impl_->hasPort && !other.impl_->hasPort)
+                || (
+                    (impl_->hasPort && other.impl_->hasPort)
+                    && (impl_->port == other.impl_->port)
+                )
+            )
+            && (impl_->path == other.impl_->path)
+            && (impl_->query == other.impl_->query)
+            && (impl_->fragment == other.impl_->fragment)
+        );
+    }
+
+    bool Uri::operator!=(const Uri& other) const {
+        return !(*this == other);
+    }
+
     bool Uri::ParseFromString(const std::string& uriString) {
         // First parse the scheme.
         // Limit our search so we don't scan into the authority

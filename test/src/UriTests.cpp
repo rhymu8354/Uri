@@ -603,3 +603,14 @@ TEST(UriTests, NormalizePath) {
         ++index;
     }
 }
+
+TEST(UriTests, ConstructNormalizeAndCompareEquivalentUris) {
+    // This was inspired by section 6.2.2
+    // of RFC 3986 (https://tools.ietf.org/html/rfc3986).
+    Uri::Uri uri1, uri2;
+    ASSERT_TRUE(uri1.ParseFromString("example://a/b/c/%7Bfoo%7D"));
+    ASSERT_TRUE(uri2.ParseFromString("eXAMPLE://a/./b/../b/%63/%7bfoo%7d"));
+    ASSERT_NE(uri1, uri2);
+    uri2.NormalizePath();
+    ASSERT_EQ(uri1, uri2);
+}

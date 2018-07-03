@@ -37,6 +37,30 @@ namespace Uri {
         Uri();
 
         /**
+         * This is the equality comparison operator for the class.
+         *
+         * @param[in] other
+         *     This is the other URI to which to compare this URI.
+         *
+         * @return
+         *     An indication of whether or not the two URIs are
+         *     equal is returned.
+         */
+        bool operator==(const Uri& other) const;
+
+        /**
+         * This is the inequality comparison operator for the class.
+         *
+         * @param[in] other
+         *     This is the other URI to which to compare this URI.
+         *
+         * @return
+         *     An indication of whether or not the two URIs are
+         *     not equal is returned.
+         */
+        bool operator!=(const Uri& other) const;
+
+        /**
          * This method builds the URI from the elements parsed
          * from the given string rendering of a URI.
          *
