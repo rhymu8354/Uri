@@ -810,6 +810,8 @@ namespace Uri {
                         target.impl_->query = impl_->query;
                     }
                 } else {
+                    // RFC describes this as:
+                    // "if (R.path starts-with "/") then"
                     if (
                         !relativeReference.impl_->path.empty()
                         && (relativeReference.impl_->path[0] == "")
@@ -817,6 +819,8 @@ namespace Uri {
                         target.impl_->path = relativeReference.impl_->path;
                         target.NormalizePath();
                     } else {
+                        // RFC describes this as:
+                        // "T.path = merge(Base.path, R.path);"
                         target.impl_->path = impl_->path;
                         if (target.impl_->path.size() > 1) {
                             target.impl_->path.pop_back();
