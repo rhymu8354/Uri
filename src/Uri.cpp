@@ -14,6 +14,7 @@
 #include <functional>
 #include <inttypes.h>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <Uri/Uri.hpp>
 #include <vector>
@@ -1242,5 +1243,36 @@ namespace Uri {
         }
         target.impl_->CopyFragment(relativeReference);
         return target;
+    }
+
+    void Uri::SetScheme(const std::string& scheme) {
+        impl_->scheme = scheme;
+    }
+
+    void Uri::SetHost(const std::string& host) {
+        impl_->host = host;
+    }
+
+    void Uri::SetQuery(const std::string& query) {
+        impl_->query = query;
+    }
+
+    std::string Uri::GenerateString() const {
+        std::ostringstream buffer;
+        if (!impl_->scheme.empty()) {
+            buffer << impl_->scheme << ':';
+        }
+        if (!impl_->host.empty()) {
+            buffer << "//";
+            if (ValidateIpv6Address(impl_->host)) {
+                buffer << '[' << impl_->host << ']';
+            } else {
+                buffer << impl_->host;
+            }
+        }
+        if (!impl_->query.empty()) {
+            buffer << '?' << impl_->query;
+        }
+        return buffer.str();
     }
 }

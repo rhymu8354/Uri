@@ -212,6 +212,40 @@ namespace Uri {
          */
         Uri Resolve(const Uri& relativeReference) const;
 
+        /**
+         * This method sets the scheme element of the URI.
+         *
+         * @param[in] scheme
+         *     This is the scheme to set for the URI.
+         */
+        void SetScheme(const std::string& scheme);
+
+        /**
+         * This method sets the host element of the URI.
+         *
+         * @param[in] host
+         *     This is the host to set for the URI.
+         */
+        void SetHost(const std::string& host);
+
+        /**
+         * This method sets the query element of the URI.
+         *
+         * @param[in] query
+         *     This is the query to set for the URI.
+         */
+        void SetQuery(const std::string& query);
+
+        /**
+         * This method constructs and returns the string
+         * rendering of the URI, according to the rules
+         * in RFC 3986 (https://tools.ietf.org/html/rfc3986).
+         *
+         * @return
+         *     The string rendering of the URI is returned.
+         */
+        std::string GenerateString() const;
+
         // Private properties
     private:
         /**

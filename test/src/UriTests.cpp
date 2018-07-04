@@ -755,3 +755,34 @@ TEST(UriTests, IPv6Address) {
         ++index;
     }
 }
+
+TEST(UriTests, GenerateString) {
+    struct TestVector {
+        std::string scheme;
+        std::string host;
+        std::string query;
+        std::string expectedUriString;
+    };
+    const std::vector< TestVector > testVectors{
+        {"http", "www.example.com", "foobar", "http://www.example.com?foobar"},
+        {"",     "example.com",     "bar",    "//example.com?bar"},
+        {"",     "example.com",     "",       "//example.com"},
+        {"",     "",                "bar",    "?bar"},
+        {"http", "",                "bar",    "http:?bar"},
+        {"http", "",                "",       "http:"},
+        {"http", "::1",             "",       "http://[::1]"},
+        {"http", "::1.2.3.4",       "",       "http://[::1.2.3.4]"},
+        {"http", "1.2.3.4",         "",       "http://1.2.3.4"},
+        {"",     "",                "",       ""},
+    };
+    size_t index = 0;
+    for (const auto& testVector : testVectors) {
+        Uri::Uri uri;
+        uri.SetScheme(testVector.scheme);
+        uri.SetHost(testVector.host);
+        uri.SetQuery(testVector.query);
+        const auto actualUriString = uri.GenerateString();
+        ASSERT_EQ(testVector.expectedUriString, actualUriString) << index;
+        ++index;
+    }
+}
