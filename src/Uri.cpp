@@ -524,6 +524,117 @@ namespace Uri {
         }
 
         /**
+         * This method takes an unparsed URI string and separates out
+         * the scheme (if any) and parses it, returning the remainder
+         * of the unparsed URI string.
+         *
+         * @param[in] authorityAndPathString
+         *     This is the the part of an unparsed URI consisting
+         *     of the authority (if any) followed by the path.
+         *
+         * @param[out] pathString
+         *     This is where to store the the path
+         *     part of the input string.
+         *
+         * @return
+         *     An indication of whether or not the given input string
+         *     was successfully parsed is returned.
+         */
+        bool ParseScheme(
+            const std::string& uriString,
+            std::string& rest
+        ) {
+            // Limit our search so we don't scan into the authority
+            // or path elements, because these may have the colon
+            // character as well, which we might misinterpret
+            // as the scheme delimiter.
+            auto authorityOrPathDelimiterStart = uriString.find('/');
+            if (authorityOrPathDelimiterStart == std::string::npos) {
+                authorityOrPathDelimiterStart = uriString.length();
+            }
+            const auto schemeEnd = uriString.substr(0, authorityOrPathDelimiterStart).find(':');
+            if (schemeEnd == std::string::npos) {
+                scheme.clear();
+                rest = uriString;
+            } else {
+                scheme = uriString.substr(0, schemeEnd);
+                bool isFirstCharacter = true;
+                if (
+                    FailsMatch(
+                        scheme,
+                        LegalSchemeCheckStrategy()
+                    )
+                ) {
+                    return false;
+                }
+                scheme = NormalizeCaseInsensitiveString(scheme);
+                rest = uriString.substr(schemeEnd + 1);
+            }
+        }
+
+        /**
+         * This method takes the part of an unparsed URI consisting
+         * of the authority (if any) followed by the path, and divides
+         * it into the authority and path parts, storing any authority
+         * information in the internal state, and returning the path
+         * part of the input string.
+         *
+         * @param[in] authorityAndPathString
+         *     This is the the part of an unparsed URI consisting
+         *     of the authority (if any) followed by the path.
+         *
+         * @param[out] pathString
+         *     This is where to store the the path
+         *     part of the input string.
+         *
+         * @return
+         *     An indication of whether or not the given input string
+         *     was successfully parsed is returned.
+         */
+        bool SplitAuthorityFromPathAndParseIt(
+            std::string authorityAndPathString,
+            std::string& pathString
+        ) {
+            // Split authority from path.  If there is an authority, parse it.
+            if (authorityAndPathString.substr(0, 2) == "//") {
+                // Strip off authority marker.
+                authorityAndPathString = authorityAndPathString.substr(2);
+
+                // First separate the authority from the path.
+                auto authorityEnd = authorityAndPathString.find('/');
+                if (authorityEnd == std::string::npos) {
+                    authorityEnd = authorityAndPathString.length();
+                }
+                pathString = authorityAndPathString.substr(authorityEnd);
+                auto authorityString = authorityAndPathString.substr(0, authorityEnd);
+
+                // Parse the elements inside the authority string.
+                if (!ParseAuthority(authorityString)) {
+                    return false;
+                }
+            } else {
+                userInfo.clear();
+                host.clear();
+                hasPort = false;
+                pathString = authorityAndPathString;
+            }
+        }
+
+        /**
+         * This method handles the special case of the URI having an
+         * authority but having an empty path.  In this case it sets
+         * the path as "/".
+         */
+        void SetDefaultPathIfAuthorityPresentAndPathEmpty() {
+            if (
+                !host.empty()
+                && path.empty()
+            ) {
+                path.push_back("");
+            }
+        }
+
+        /**
          * This method takes the part of a URI string that has just
          * the query element with its delimiter, and breaks off
          * and decodes the query.
@@ -578,6 +689,142 @@ namespace Uri {
             }
             return DecodeQueryOrFragment(fragment);
         }
+
+        /**
+         * This method applies the "remove_dot_segments" routine talked about
+         * in RFC 3986 (https://tools.ietf.org/html/rfc3986) to the path
+         * segments of the URI, in order to normalize the path
+         * (apply and remove "." and ".." segments).
+         */
+        void NormalizePath() {
+            auto oldPath = std::move(path);
+            path.clear();
+            bool isAbsolute = (
+                !oldPath.empty()
+                && oldPath[0].empty()
+            );
+            bool atDirectoryLevel = false;
+            for (const auto segment: oldPath) {
+                if (segment == ".") {
+                    atDirectoryLevel = true;
+                } else if (segment == "..") {
+                    if (!path.empty()) {
+                        if (
+                            !isAbsolute
+                            || (path.size() > 1)
+                        ) {
+                            path.pop_back();
+                        }
+                    }
+                    atDirectoryLevel = true;
+                } else {
+                    if (
+                        !atDirectoryLevel
+                        || !segment.empty()
+                    ) {
+                        path.push_back(segment);
+                    }
+                    atDirectoryLevel = segment.empty();
+                }
+            }
+            if (
+                atDirectoryLevel
+                && (
+                    !path.empty()
+                    && !path.back().empty()
+                )
+            ) {
+                path.push_back("");
+            }
+        }
+
+        /**
+         * This method replaces the URI's scheme with that of
+         * another URI.
+         *
+         * @param[in] other
+         *     This is the other URI from which to copy the scheme.
+         */
+        void CopyScheme(const Uri& other) {
+            scheme = other.impl_->scheme;
+        }
+
+        /**
+         * This method replaces the URI's authority with that of
+         * another URI.
+         *
+         * @param[in] other
+         *     This is the other URI from which to copy the authority.
+         */
+        void CopyAuthority(const Uri& other) {
+            host = other.impl_->host;
+            userInfo = other.impl_->userInfo;
+            hasPort = other.impl_->hasPort;
+            port = other.impl_->port;
+        }
+
+        /**
+         * This method replaces the URI's path with that of
+         * another URI.
+         *
+         * @param[in] other
+         *     This is the other URI from which to copy the path.
+         */
+        void CopyPath(const Uri& other) {
+            path = other.impl_->path;
+        }
+
+        /**
+         * This method replaces the URI's path with that of
+         * the normalized form of another URI.
+         *
+         * @param[in] other
+         *     This is the other URI from which to copy
+         *     the normalized path.
+         */
+        void CopyAndNormalizePath(const Uri& other) {
+            CopyPath(other);
+            NormalizePath();
+        }
+
+        /**
+         * This method replaces the URI's query with that of
+         * another URI.
+         *
+         * @param[in] other
+         *     This is the other URI from which to copy the query.
+         */
+        void CopyQuery(const Uri& other) {
+            query = other.impl_->query;
+        }
+
+        /**
+         * This method replaces the URI's fragment with that of
+         * another URI.
+         *
+         * @param[in] other
+         *     This is the other URI from which to copy the query.
+         */
+        void CopyFragment(const Uri& other) {
+            fragment = other.impl_->fragment;
+        }
+
+        /**
+         * This method returns an indication of whether or not the
+         * path of the URI is an absolute path, meaning it begins
+         * with a forward slash ('/') character.
+         *
+         * @return
+         *     An indication of whether or not the path of the URI
+         *     is an absolute path, meaning it begins
+         *     with a forward slash ('/') character is returned.
+         */
+        bool IsPathAbsolute() const {
+            return (
+                !path.empty()
+                && (path[0] == "")
+            );
+        }
     };
 
     Uri::~Uri() = default;
@@ -612,83 +859,24 @@ namespace Uri {
     }
 
     bool Uri::ParseFromString(const std::string& uriString) {
-        // First parse the scheme.
-        // Limit our search so we don't scan into the authority
-        // or path elements, because these may have the colon
-        // character as well, which we might misinterpret
-        // as the scheme delimiter.
-        auto authorityOrPathDelimiterStart = uriString.find('/');
-        if (authorityOrPathDelimiterStart == std::string::npos) {
-            authorityOrPathDelimiterStart = uriString.length();
-        }
-        const auto schemeEnd = uriString.substr(0, authorityOrPathDelimiterStart).find(':');
         std::string rest;
-        if (schemeEnd == std::string::npos) {
-            impl_->scheme.clear();
-            rest = uriString;
-        } else {
-            impl_->scheme = uriString.substr(0, schemeEnd);
-            bool isFirstCharacter = true;
-            if (
-                FailsMatch(
-                    impl_->scheme,
-                    LegalSchemeCheckStrategy()
-                )
-            ) {
-                return false;
-            }
-            impl_->scheme = NormalizeCaseInsensitiveString(impl_->scheme);
-            rest = uriString.substr(schemeEnd + 1);
+        if (!impl_->ParseScheme(uriString, rest)) {
+            return false;
         }
-
-        // Next parse the authority.
         const auto pathEnd = rest.find_first_of("?#");
-        auto authorityAndPathString = rest.substr(0, pathEnd);
+        const auto authorityAndPathString = rest.substr(0, pathEnd);
         const auto queryAndOrFragment = rest.substr(authorityAndPathString.length());
         std::string pathString;
-        if (authorityAndPathString.substr(0, 2) == "//") {
-            // Strip off authority marker.
-            authorityAndPathString = authorityAndPathString.substr(2);
-
-            // First separate the authority from the path.
-            auto authorityEnd = authorityAndPathString.find('/');
-            if (authorityEnd == std::string::npos) {
-                authorityEnd = authorityAndPathString.length();
-            }
-            pathString = authorityAndPathString.substr(authorityEnd);
-            auto authorityString = authorityAndPathString.substr(0, authorityEnd);
-
-            // Parse the elements inside the authority string.
-            if (!impl_->ParseAuthority(authorityString)) {
-                return false;
-            }
-        } else {
-            impl_->userInfo.clear();
-            impl_->host.clear();
-            impl_->hasPort = false;
-            pathString = authorityAndPathString;
+        if (!impl_->SplitAuthorityFromPathAndParseIt(authorityAndPathString, pathString)) {
+            return false;
         }
-
-        // Next, parse the path.
         if (!impl_->ParsePath(pathString)) {
             return false;
         }
-
-        // Handle special case of URI with authority and empty
-        // path -- treat the same as "/" path.
-        if (
-            !impl_->host.empty()
-            && impl_->path.empty()
-        ) {
-            impl_->path.push_back("");
-        }
-
-        // Next, parse the fragment if there is one.
+        impl_->SetDefaultPathIfAuthorityPresentAndPathEmpty();
         if (!impl_->ParseFragment(queryAndOrFragment, rest)) {
             return false;
         }
-
-        // Finally, if anything is left, it's the query.
         return impl_->ParseQuery(rest);
     }
 
@@ -721,11 +909,7 @@ namespace Uri {
     }
 
     bool Uri::ContainsRelativePath() const {
-        if (impl_->path.empty()) {
-            return true;
-        } else {
-            return !impl_->path[0].empty();
-        }
+        return !impl_->IsPathAbsolute();
     }
 
     std::string Uri::GetQuery() const {
@@ -737,45 +921,7 @@ namespace Uri {
     }
 
     void Uri::NormalizePath() {
-        auto oldPath = std::move(impl_->path);
-        impl_->path.clear();
-        bool isAbsolute = (
-            !oldPath.empty()
-            && oldPath[0].empty()
-        );
-        bool atDirectoryLevel = false;
-        for (const auto segment: oldPath) {
-            if (segment == ".") {
-                atDirectoryLevel = true;
-            } else if (segment == "..") {
-                if (!impl_->path.empty()) {
-                    if (
-                        !isAbsolute
-                        || (impl_->path.size() > 1)
-                    ) {
-                        impl_->path.pop_back();
-                    }
-                }
-                atDirectoryLevel = true;
-            } else {
-                if (
-                    !atDirectoryLevel
-                    || !segment.empty()
-                ) {
-                    impl_->path.push_back(segment);
-                }
-                atDirectoryLevel = segment.empty();
-            }
-        }
-        if (
-            atDirectoryLevel
-            && (
-                !impl_->path.empty()
-                && !impl_->path.back().empty()
-            )
-        ) {
-            impl_->path.push_back("");
-        }
+        impl_->NormalizePath();
     }
 
     Uri Uri::Resolve(const Uri& relativeReference) const {
@@ -784,44 +930,32 @@ namespace Uri {
         // RFC 3986 (https://tools.ietf.org/html/rfc3986).
         Uri target;
         if (!relativeReference.impl_->scheme.empty()) {
-            target.impl_->scheme = relativeReference.impl_->scheme;
-            target.impl_->host = relativeReference.impl_->host;
-            target.impl_->userInfo = relativeReference.impl_->userInfo;
-            target.impl_->hasPort = relativeReference.impl_->hasPort;
-            target.impl_->port = relativeReference.impl_->port;
-            target.impl_->path = relativeReference.impl_->path;
-            target.NormalizePath();
-            target.impl_->query = relativeReference.impl_->query;
+            target.impl_->CopyScheme(relativeReference);
+            target.impl_->CopyAuthority(relativeReference);
+            target.impl_->CopyAndNormalizePath(relativeReference);
+            target.impl_->CopyQuery(relativeReference);
         } else {
             if (!relativeReference.impl_->host.empty()) {
-                target.impl_->host = relativeReference.impl_->host;
-                target.impl_->userInfo = relativeReference.impl_->userInfo;
-                target.impl_->hasPort = relativeReference.impl_->hasPort;
-                target.impl_->port = relativeReference.impl_->port;
-                target.impl_->path = relativeReference.impl_->path;
-                target.NormalizePath();
-                target.impl_->query = relativeReference.impl_->query;
+                target.impl_->CopyAuthority(relativeReference);
+                target.impl_->CopyAndNormalizePath(relativeReference);
+                target.impl_->CopyQuery(relativeReference);
             } else {
                 if (relativeReference.impl_->path.empty()) {
                     target.impl_->path = impl_->path;
                     if (!relativeReference.impl_->query.empty()) {
-                        target.impl_->query = relativeReference.impl_->query;
+                        target.impl_->CopyQuery(relativeReference);
                     } else {
-                        target.impl_->query = impl_->query;
+                        target.impl_->CopyQuery(*this);
                     }
                 } else {
                     // RFC describes this as:
                     // "if (R.path starts-with "/") then"
-                    if (
-                        !relativeReference.impl_->path.empty()
-                        && (relativeReference.impl_->path[0] == "")
-                    ) {
-                        target.impl_->path = relativeReference.impl_->path;
-                        target.NormalizePath();
+                    if (relativeReference.impl_->IsPathAbsolute()) {
+                        target.impl_->CopyAndNormalizePath(relativeReference);
                     } else {
                         // RFC describes this as:
                         // "T.path = merge(Base.path, R.path);"
-                        target.impl_->path = impl_->path;
+                        target.impl_->CopyPath(*this);
                         if (target.impl_->path.size() > 1) {
                             target.impl_->path.pop_back();
                         }
@@ -832,16 +966,13 @@ namespace Uri {
                         );
                         target.NormalizePath();
                     }
-                    target.impl_->query = relativeReference.impl_->query;
+                    target.impl_->CopyQuery(relativeReference);
                 }
-                target.impl_->host = impl_->host;
-                target.impl_->userInfo = impl_->userInfo;
-                target.impl_->hasPort = impl_->hasPort;
-                target.impl_->port = impl_->port;
+                target.impl_->CopyAuthority(*this);
             }
-            target.impl_->scheme = impl_->scheme;
+            target.impl_->CopyScheme(*this);
         }
-        target.impl_->fragment = relativeReference.impl_->fragment;
+        target.impl_->CopyFragment(relativeReference);
         return target;
     }
 }
