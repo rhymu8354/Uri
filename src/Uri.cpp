@@ -588,6 +588,7 @@ namespace Uri {
                 scheme = NormalizeCaseInsensitiveString(scheme);
                 rest = uriString.substr(schemeEnd + 1);
             }
+            return true;
         }
 
         /**
@@ -636,6 +637,7 @@ namespace Uri {
                 hasPort = false;
                 pathString = authorityAndPathString;
             }
+            return true;
         }
 
         /**
