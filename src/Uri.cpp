@@ -651,7 +651,6 @@ namespace Uri {
                 switch(hostParsingState) {
                     case HostParsingState::FIRST_CHARACTER: {
                         if (c == '[') {
-                            host.push_back(c);
                             hostParsingState = HostParsingState::IP_LITERAL;
                             break;
                         } else {
@@ -698,12 +697,13 @@ namespace Uri {
                     case HostParsingState::IPV6_ADDRESS: {
                         // TODO: research this offline first
                         // before attempting to code it
-                        host.push_back(c);
                         if (c == ']') {
                             if (!ValidateIpv6Address(host)) {
                                 return false;
                             }
                             hostParsingState = HostParsingState::GARBAGE_CHECK;
+                        } else {
+                            host.push_back(c);
                         }
                     } break;
 
@@ -717,11 +717,12 @@ namespace Uri {
                     } break;
 
                     case HostParsingState::IPV_FUTURE_BODY: {
-                        host.push_back(c);
                         if (c == ']') {
                             hostParsingState = HostParsingState::GARBAGE_CHECK;
                         } else if (!IPV_FUTURE_LAST_PART.Contains(c)) {
                             return false;
+                        } else {
+                            host.push_back(c);
                         }
                     } break;
 
