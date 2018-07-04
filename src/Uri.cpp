@@ -167,6 +167,216 @@ namespace {
     }
 
     /**
+     * This function checks to make sure the given string
+     * is a valid rendering of an octet as a decimal number.
+     *
+     * @param[in] octetString
+     *     This is the octet string to validate.
+     *
+     * @return
+     *     An indication of whether or not the given astring
+     *     is a valid rendering of an octet as a
+     *     decimal number is returned.
+     */
+    bool ValidateOctet(const std::string& octetString) {
+        int octet = 0;
+        for (auto c: octetString) {
+            if (DIGIT.Contains(c)) {
+                octet *= 10;
+                octet += (int)(c - '0');
+            } else {
+                return false;
+            }
+        }
+        return (octet <= 255);
+    }
+
+    /**
+     * This function checks to make sure the given address
+     * is a valid IPv6 address according to the rules in
+     * RFC 3986 (https://tools.ietf.org/html/rfc3986).
+     *
+     * @param[in] address
+     *     This is the IPv6 address to validate.
+     *
+     * @return
+     *     An indication of whether or not the given address
+     *     is a valid IPv6 address is returned.
+     */
+    bool ValidateIpv4Adress(const std::string& address) {
+        size_t numGroups = 0;
+        size_t state = 0;
+        std::string octetBuffer;
+        for (auto c: address) {
+            switch (state) {
+                case 0: { // not in an octet yet
+                    if (DIGIT.Contains(c)) {
+                        octetBuffer.push_back(c);
+                        state = 1;
+                    } else {
+                        return false;
+                    }
+                } break;
+
+                case 1: { // expect a digit or dot
+                    if (c == '.') {
+                        if (numGroups++ >= 4) {
+                            return false;
+                        }
+                        if (!ValidateOctet(octetBuffer)) {
+                            return false;
+                        }
+                        octetBuffer.clear();
+                        state = 0;
+                    } else if (DIGIT.Contains(c)) {
+                        octetBuffer.push_back(c);
+                    } else {
+                        return false;
+                    }
+                } break;
+            }
+        }
+        if (!octetBuffer.empty()) {
+            ++numGroups;
+            if (!ValidateOctet(octetBuffer)) {
+                return false;
+            }
+        }
+        return (numGroups == 4);
+    }
+
+    /**
+     * This function checks to make sure the given address
+     * is a valid IPv6 address according to the rules in
+     * RFC 3986 (https://tools.ietf.org/html/rfc3986).
+     *
+     * @param[in] address
+     *     This is the IPv6 address to validate.
+     *
+     * @return
+     *     An indication of whether or not the given address
+     *     is a valid IPv6 address is returned.
+     */
+    bool ValidateIpv6Address(const std::string& address) {
+        size_t numGroups = 0;
+        size_t numDigits = 0;
+        bool doubleColonEncountered = false;
+        size_t state = 0;
+        size_t potentialIpv4AddressStart = 0;
+        size_t position = 0;
+        bool ipv4AddressEncountered = false;
+        for (auto c: address) {
+            switch (state) {
+                case 0: { // not in a group yet
+                    if (c == ':') {
+                        state = 1;
+                    } else if (DIGIT.Contains(c)) {
+                        potentialIpv4AddressStart = position;
+                        ++numDigits = 1;
+                        state = 4;
+                    } else if (HEXDIG.Contains(c)) {
+                        ++numDigits = 1;
+                        state = 3;
+                    } else {
+                        return false;
+                    }
+                } break;
+
+                case 1: { // not in a group yet, encountered one colon
+                    if (c == ':') {
+                        if (doubleColonEncountered) {
+                            return false;
+                        } else {
+                            doubleColonEncountered = true;
+                            state = 2;
+                        }
+                    } else {
+                        return false;
+                    }
+                } break;
+
+                case 2: { // expect a hex digit
+                    if (DIGIT.Contains(c)) {
+                        potentialIpv4AddressStart = position;
+                        if (++numDigits > 4) {
+                            return false;
+                        }
+                        state = 4;
+                    } else if (HEXDIG.Contains(c)) {
+                        if (++numDigits > 4) {
+                            return false;
+                        }
+                        state = 3;
+                    } else {
+                        return false;
+                    }
+                } break;
+
+                case 3: { // expect either a hex digit or colon
+                    if (c == ':') {
+                        numDigits = 0;
+                        ++numGroups;
+                        state = 2;
+                    } else if (HEXDIG.Contains(c)) {
+                        if (++numDigits > 4) {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                } break;
+
+                case 4: { // expect either a hex digit, dot, or colon
+                    if (c == ':') {
+                        numDigits = 0;
+                        ++numGroups;
+                    } else if (c == '.') {
+                        ipv4AddressEncountered = true;
+                        break;
+                    } else if (DIGIT.Contains(c)) {
+                        if (++numDigits > 4) {
+                            return false;
+                        }
+                    } else if (HEXDIG.Contains(c)) {
+                        if (++numDigits > 4) {
+                            return false;
+                        }
+                        state = 3;
+                    } else {
+                        return false;
+                    }
+                } break;
+            }
+            if (ipv4AddressEncountered) {
+                break;
+            }
+            ++position;
+        }
+        if (state == 4) {
+            // count trailing group
+            ++numGroups;
+        }
+        if (
+            (position == address.length())
+            && (state == 1)
+        ) { // trailing single colon
+            return false;
+        }
+        if (ipv4AddressEncountered) {
+            if (!ValidateIpv4Adress(address.substr(potentialIpv4AddressStart))) {
+                return false;
+            }
+            numGroups += 2;
+        }
+        if (doubleColonEncountered) {
+            // A double colon matches one or more groups (of 0).
+            return (numGroups <= 7);
+        } else {
+            return (numGroups == 8);
+        }
+    }
+
+    /**
      * This function takes a given "stillPassing" strategy
      * and invokes it on the sequence of characters in the given
      * string, to check if the string passes or not.
@@ -490,6 +700,9 @@ namespace Uri {
                         // before attempting to code it
                         host.push_back(c);
                         if (c == ']') {
+                            if (!ValidateIpv6Address(host)) {
+                                return false;
+                            }
                             hostParsingState = HostParsingState::GARBAGE_CHECK;
                         }
                     } break;

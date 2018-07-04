@@ -710,3 +710,48 @@ TEST(UriTests, EmptyPathInUriWithAuthorityIsEquivalentToSlashOnlyPath) {
     ASSERT_TRUE(uri2.ParseFromString("//example.com/"));
     ASSERT_EQ(uri1, uri2);
 }
+
+TEST(UriTests, IPv6Address) {
+    struct TestVector {
+        std::string uriString;
+        std::string expectedHost;
+        bool isValid;
+    };
+    const std::vector< TestVector > testVectors{
+        // valid
+        {"http://[::1]/", "::1", true},
+        {"http://[::ffff:1.2.3.4]/", "::ffff:1.2.3.4", true},
+        {"http://[2001:db8:85a3:8d3:1319:8a2e:370:7348]/", "2001:db8:85a3:8d3:1319:8a2e:370:7348", true},
+
+        // invalid
+        {"http://[::ffff:1.2.x.4]/", "", false},
+        {"http://[::ffff:1.2.3.4.8]/", "", false},
+        {"http://[::ffff:1.2.3]/", "", false},
+        {"http://[::ffff:1.2.3.]/", "", false},
+        {"http://[::ffff:1.2.3.256]/", "", false},
+        {"http://[::fxff:1.2.3.4]/", "", false},
+        {"http://[::ffff:1.2.3.-4]/", "", false},
+        {"http://[::ffff:1.2.3. 4]/", "", false},
+        {"http://[::ffff:1.2.3.4 ]/", "", false},
+        {"http://[::ffff:1.2.3.4/", "", false},
+        {"http://::ffff:1.2.3.4]/", "", false},
+        {"http://::ffff:a.2.3.4]/", "", false},
+        {"http://::ffff:1.a.3.4]/", "", false},
+        {"http://[2001:db8:85a3:8d3:1319:8a2e:370:7348:0000]/", "", false},
+        {"http://[2001:db8:85a3::8a2e:0:]/", "", false},
+        {"http://[2001:db8:85a3::8a2e::]/", "", false},
+        {"http://[]/", "", false},
+        {"http://[:]/", "", false},
+        {"http://[v]/", "", false},
+    };
+    size_t index = 0;
+    for (const auto& testVector : testVectors) {
+        Uri::Uri uri;
+        const bool parseResult = uri.ParseFromString(testVector.uriString);
+        ASSERT_EQ(testVector.isValid, parseResult) << index;
+        if (parseResult) {
+            ASSERT_EQ(testVector.expectedHost, uri.GetHost());
+        }
+        ++index;
+    }
+}
