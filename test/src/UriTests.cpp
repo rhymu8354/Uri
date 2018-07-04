@@ -355,8 +355,8 @@ TEST(UriTests, ParseFromStringHostBarelyLegal) {
         {"//(/", "("},
         {"//;/", ";"},
         {"//1.2.3.4/", "1.2.3.4"},
-        {"//[v7.:]/", "[v7.:]"},
-        {"//[v7.aB]/", "[v7.aB]"},
+        {"//[v7.:]/", "v7.:"},
+        {"//[v7.aB]/", "v7.aB"},
     };
     size_t index = 0;
     for (const auto& testVector : testVectors) {
