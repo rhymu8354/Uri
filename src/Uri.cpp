@@ -711,33 +711,54 @@ namespace Uri {
         }
 
         /**
+         * This method determines whether or not it makes sense to
+         * navigate one level up from the current path
+         * (in other words, does appending ".." to the path
+         * actually change the path?)
+         *
+         * @return
+         *     An indication of whether or not it makes sense to
+         *     navigate one level up from the current path is returned.
+         */
+        bool CanNavigatePathUpOneLevel() const {
+            return (
+                !IsPathAbsolute()
+                || (path.size() > 1)
+            );
+        }
+
+        /**
          * This method applies the "remove_dot_segments" routine talked about
          * in RFC 3986 (https://tools.ietf.org/html/rfc3986) to the path
          * segments of the URI, in order to normalize the path
          * (apply and remove "." and ".." segments).
          */
         void NormalizePath() {
+            // Rebuild the path one segment
+            // at a time, removing and applying special
+            // navigation segments ("." and "..") as we go.
             auto oldPath = std::move(path);
             path.clear();
-            bool isAbsolute = (
-                !oldPath.empty()
-                && oldPath[0].empty()
-            );
             bool atDirectoryLevel = false;
             for (const auto segment: oldPath) {
                 if (segment == ".") {
                     atDirectoryLevel = true;
                 } else if (segment == "..") {
+                    // Remove last path element
+                    // if we can navigate up a level.
                     if (!path.empty()) {
-                        if (
-                            !isAbsolute
-                            || (path.size() > 1)
-                        ) {
+                        if (CanNavigatePathUpOneLevel()) {
                             path.pop_back();
                         }
                     }
                     atDirectoryLevel = true;
                 } else {
+                    // Non-relative elements can just
+                    // transfer over fine.  An empty
+                    // segment marks a transition to
+                    // a directory level context.  If we're
+                    // already in that context, we
+                    // want to ignore the transition.
                     if (
                         !atDirectoryLevel
                         || !segment.empty()
@@ -747,6 +768,10 @@ namespace Uri {
                     atDirectoryLevel = segment.empty();
                 }
             }
+
+            // If at the end of rebuilding the path,
+            // we're in a directory level context,
+            // add an empty segment to mark the fact.
             if (
                 atDirectoryLevel
                 && (
