@@ -787,7 +787,7 @@ TEST(UriTests, GenerateString) {
         {"",     "",    "",                false, 0,    {"xyz"},            false, "",       false, "",    "xyz"},
         {"",     "",    "",                false, 0,    {"xyz", ""},        false, "",       false, "",    "xyz/"},
         {"",     "",    "",                false, 0,    {},                 true,  "bar",    false, "",    "?bar"},
-        {"http", "",    "",                false, 0,    {},                 true, "bar",    false, "",    "http:?bar"},
+        {"http", "",    "",                false, 0,    {},                 true,  "bar",    false, "",    "http:?bar"},
         {"http", "",    "",                false, 0,    {},                 false, "",       false, "",    "http:"},
         {"http", "",    "::1",             false, 0,    {},                 false, "",       false, "",    "http://[::1]"},
         {"http", "",    "::1.2.3.4",       false, 0,    {},                 false, "",       false, "",    "http://[::1.2.3.4]"},
