@@ -764,34 +764,38 @@ TEST(UriTests, GenerateString) {
         bool hasPort;
         uint16_t port;
         std::vector< std::string > path;
+        bool hasQuery;
         std::string query;
+        bool hasFragment;
         std::string fragment;
         std::string expectedUriString;
     };
     const std::vector< TestVector > testVectors{
-        {"http", "bob", "www.example.com", true,  8080, {"", "abc", "def"}, "foobar", "ch2", "http://bob@www.example.com:8080/abc/def?foobar#ch2"},
-        {"http", "bob", "www.example.com", true,  0,    {},                 "foobar", "ch2", "http://bob@www.example.com:0?foobar#ch2"},
-        {"",     "",    "example.com",     false, 0,    {},                 "bar",    "",    "//example.com?bar"},
-        {"",     "",    "example.com",     false, 0,    {},                 "",       "",    "//example.com"},
-        {"",     "",    "example.com",     false, 0,    {""},               "",       "",    "//example.com/"},
-        {"",     "",    "example.com",     false, 0,    {"", "xyz"},        "",       "",    "//example.com/xyz"},
-        {"",     "",    "example.com",     false, 0,    {"", "xyz", ""},    "",       "",    "//example.com/xyz/"},
-        {"",     "",    "",                false, 0,    {""},               "",       "",    "/"},
-        {"",     "",    "",                false, 0,    {"", "xyz"},        "",       "",    "/xyz"},
-        {"",     "",    "",                false, 0,    {"", "xyz", ""},    "",       "",    "/xyz/"},
-        {"",     "",    "",                false, 0,    {},                 "",       "",    ""},
-        {"",     "",    "",                false, 0,    {"xyz"},            "",       "",    "xyz"},
-        {"",     "",    "",                false, 0,    {"xyz", ""},        "",       "",    "xyz/"},
-        {"",     "",    "",                false, 0,    {},                 "bar",    "",    "?bar"},
-        {"http", "",    "",                false, 0,    {},                 "bar",    "",    "http:?bar"},
-        {"http", "",    "",                false, 0,    {},                 "",       "",    "http:"},
-        {"http", "",    "::1",             false, 0,    {},                 "",       "",    "http://[::1]"},
-        {"http", "",    "::1.2.3.4",       false, 0,    {},                 "",       "",    "http://[::1.2.3.4]"},
-        {"http", "",    "1.2.3.4",         false, 0,    {},                 "",       "",    "http://1.2.3.4"},
-        {"",     "",    "",                false, 0,    {},                 "",       "",    ""},
-        {"http", "bob", "",                false, 0,    {},                 "foobar", "",    "http://bob@?foobar"},
-        {"",     "bob", "",                false, 0,    {},                 "foobar", "",    "//bob@?foobar"},
-        {"",     "bob", "",                false, 0,    {},                 "",       "",    "//bob@"},
+        {"http", "bob", "www.example.com", true,  8080, {"", "abc", "def"}, true,  "foobar", true,  "ch2", "http://bob@www.example.com:8080/abc/def?foobar#ch2"},
+        {"http", "bob", "www.example.com", true,  0,    {},                 true,  "foobar", true,  "ch2", "http://bob@www.example.com:0?foobar#ch2"},
+        {"http", "bob", "www.example.com", true,  0,    {},                 true,  "foobar", true,  "",    "http://bob@www.example.com:0?foobar#"},
+        {"",     "",    "example.com",     false, 0,    {},                 true,  "bar",    false, "",    "//example.com?bar"},
+        {"",     "",    "example.com",     false, 0,    {},                 true,  ""   ,    false, "",    "//example.com?"},
+        {"",     "",    "example.com",     false, 0,    {},                 false, "",       false, "",    "//example.com"},
+        {"",     "",    "example.com",     false, 0,    {""},               false, "",       false, "",    "//example.com/"},
+        {"",     "",    "example.com",     false, 0,    {"", "xyz"},        false, "",       false, "",    "//example.com/xyz"},
+        {"",     "",    "example.com",     false, 0,    {"", "xyz", ""},    false, "",       false, "",    "//example.com/xyz/"},
+        {"",     "",    "",                false, 0,    {""},               false, "",       false, "",    "/"},
+        {"",     "",    "",                false, 0,    {"", "xyz"},        false, "",       false, "",    "/xyz"},
+        {"",     "",    "",                false, 0,    {"", "xyz", ""},    false, "",       false, "",    "/xyz/"},
+        {"",     "",    "",                false, 0,    {},                 false, "",       false, "",    ""},
+        {"",     "",    "",                false, 0,    {"xyz"},            false, "",       false, "",    "xyz"},
+        {"",     "",    "",                false, 0,    {"xyz", ""},        false, "",       false, "",    "xyz/"},
+        {"",     "",    "",                false, 0,    {},                 true,  "bar",    false, "",    "?bar"},
+        {"http", "",    "",                false, 0,    {},                 true, "bar",    false, "",    "http:?bar"},
+        {"http", "",    "",                false, 0,    {},                 false, "",       false, "",    "http:"},
+        {"http", "",    "::1",             false, 0,    {},                 false, "",       false, "",    "http://[::1]"},
+        {"http", "",    "::1.2.3.4",       false, 0,    {},                 false, "",       false, "",    "http://[::1.2.3.4]"},
+        {"http", "",    "1.2.3.4",         false, 0,    {},                 false, "",       false, "",    "http://1.2.3.4"},
+        {"",     "",    "",                false, 0,    {},                 false, "",       false, "",    ""},
+        {"http", "bob", "",                false, 0,    {},                 true,  "foobar", false, "",    "http://bob@?foobar"},
+        {"",     "bob", "",                false, 0,    {},                 true,  "foobar", false, "",    "//bob@?foobar"},
+        {"",     "bob", "",                false, 0,    {},                 false, "",       false, "",    "//bob@"},
     };
     size_t index = 0;
     for (const auto& testVector : testVectors) {
@@ -805,10 +809,52 @@ TEST(UriTests, GenerateString) {
             uri.ClearPort();
         }
         uri.SetPath(testVector.path);
-        uri.SetQuery(testVector.query);
-        uri.SetFragment(testVector.fragment);
+        if (testVector.hasQuery) {
+            uri.SetQuery(testVector.query);
+        } else {
+            uri.ClearQuery();
+        }
+        if (testVector.hasFragment) {
+            uri.SetFragment(testVector.fragment);
+        } else {
+            uri.ClearFragment();
+        }
         const auto actualUriString = uri.GenerateString();
         ASSERT_EQ(testVector.expectedUriString, actualUriString) << index;
         ++index;
     }
+}
+
+TEST(UriTests, FragmentEmptyButPresent) {
+    Uri::Uri uri;
+    ASSERT_TRUE(uri.ParseFromString("http://example.com#"));
+    ASSERT_TRUE(uri.HasFragment());
+    ASSERT_EQ("", uri.GetFragment());
+    ASSERT_EQ("http://example.com/#", uri.GenerateString());
+    uri.ClearFragment();
+    ASSERT_EQ("http://example.com/", uri.GenerateString());
+    ASSERT_FALSE(uri.HasFragment());
+    ASSERT_TRUE(uri.ParseFromString("http://example.com"));
+    ASSERT_FALSE(uri.HasFragment());
+    uri.SetFragment("");
+    ASSERT_TRUE(uri.HasFragment());
+    ASSERT_EQ("", uri.GetFragment());
+    ASSERT_EQ("http://example.com/#", uri.GenerateString());
+}
+
+TEST(UriTests, QueryEmptyButPresent) {
+    Uri::Uri uri;
+    ASSERT_TRUE(uri.ParseFromString("http://example.com?"));
+    ASSERT_TRUE(uri.HasQuery());
+    ASSERT_EQ("", uri.GetQuery());
+    ASSERT_EQ("http://example.com/?", uri.GenerateString());
+    uri.ClearQuery();
+    ASSERT_EQ("http://example.com/", uri.GenerateString());
+    ASSERT_FALSE(uri.HasQuery());
+    ASSERT_TRUE(uri.ParseFromString("http://example.com"));
+    ASSERT_FALSE(uri.HasQuery());
+    uri.SetQuery("");
+    ASSERT_TRUE(uri.HasQuery());
+    ASSERT_EQ("", uri.GetQuery());
+    ASSERT_EQ("http://example.com/?", uri.GenerateString());
 }

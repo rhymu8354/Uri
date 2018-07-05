@@ -542,10 +542,22 @@ namespace Uri {
         std::vector< std::string > path;
 
         /**
+         * This flag indicates whether or not the
+         * URI includes a query.
+         */
+        bool hasQuery = false;
+
+        /**
          * This is the "query" element of the URI,
          * if it has one.
          */
         std::string query;
+
+        /**
+         * This flag indicates whether or not the
+         * URI includes a fragment.
+         */
+        bool hasFragment = false;
 
         /**
          * This is the "fragment" element of the URI,
@@ -910,10 +922,11 @@ namespace Uri {
          *     is returned.
          */
         bool ParseQuery(const std::string& queryWithDelimiter) {
-            if (queryWithDelimiter.empty()) {
-                query.clear();
-            } else {
+            hasQuery = !queryWithDelimiter.empty();
+            if (hasQuery) {
                 query = queryWithDelimiter.substr(1);
+            } else {
+                query.clear();
             }
             return DecodeQueryOrFragment(query);
         }
@@ -943,9 +956,11 @@ namespace Uri {
         ) {
             const auto fragmentDelimiter = queryAndOrFragment.find('#');
             if (fragmentDelimiter == std::string::npos) {
+                hasFragment = false;
                 fragment.clear();
                 rest = queryAndOrFragment;
             } else {
+                hasFragment = true;
                 fragment = queryAndOrFragment.substr(fragmentDelimiter + 1);
                 rest = queryAndOrFragment.substr(0, fragmentDelimiter);
             }
@@ -1199,8 +1214,16 @@ namespace Uri {
         return !impl_->IsPathAbsolute();
     }
 
+    bool Uri::HasQuery() const {
+        return impl_->hasQuery;
+    }
+
     std::string Uri::GetQuery() const {
         return impl_->query;
+    }
+
+    bool Uri::HasFragment() const {
+        return impl_->hasFragment;
     }
 
     std::string Uri::GetFragment() const {
@@ -1288,12 +1311,22 @@ namespace Uri {
         impl_->path = path;
     }
 
+    void Uri::ClearQuery() {
+        impl_->hasQuery = false;
+    }
+
     void Uri::SetQuery(const std::string& query) {
         impl_->query = query;
+        impl_->hasQuery = true;
+    }
+
+    void Uri::ClearFragment() {
+        impl_->hasFragment = false;
     }
 
     void Uri::SetFragment(const std::string& fragment) {
         impl_->fragment = fragment;
+        impl_->hasFragment = true;
     }
 
     std::string Uri::GenerateString() const {
@@ -1332,10 +1365,10 @@ namespace Uri {
             }
             ++i;
         }
-        if (!impl_->query.empty()) {
+        if (impl_->hasQuery) {
             buffer << '?' << impl_->query;
         }
-        if (!impl_->fragment.empty()) {
+        if (impl_->hasFragment) {
             buffer << '#' << impl_->fragment;
         }
         return buffer.str();

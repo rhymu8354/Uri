@@ -164,6 +164,16 @@ namespace Uri {
         bool ContainsRelativePath() const;
 
         /**
+         * This method returns an indication of whether or not the
+         * URI includes a query.
+         *
+         * @return
+         *     An indication of whether or not the
+         *     URI includes a query is returned.
+         */
+        bool HasQuery() const;
+
+        /**
          * This method returns the "query" element of the URI,
          * if it has one.
          *
@@ -174,6 +184,16 @@ namespace Uri {
          *     This is returned if there is no "query" element in the URI.
          */
         std::string GetQuery() const;
+
+        /**
+         * This method returns an indication of whether or not the
+         * URI includes a fragment.
+         *
+         * @return
+         *     An indication of whether or not the
+         *     URI includes a fragment is returned.
+         */
+        bool HasFragment() const;
 
         /**
          * This method returns the "fragment" element of the URI,
@@ -267,12 +287,22 @@ namespace Uri {
         void SetPath(const std::vector< std::string >& path);
 
         /**
+         * This method removes the query element from the URI.
+         */
+        void ClearQuery();
+
+        /**
          * This method sets the query element of the URI.
          *
          * @param[in] query
          *     This is the query to set for the URI.
          */
         void SetQuery(const std::string& query);
+
+        /**
+         * This method removes the fragment element from the URI.
+         */
+        void ClearFragment();
 
         /**
          * This method sets the fragment element of the URI.
