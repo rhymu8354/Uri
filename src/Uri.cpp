@@ -556,6 +556,24 @@ namespace Uri {
         // Methods
 
         /**
+         * This method returns an indication of whether or not
+         * the URI includes any element that is part of the
+         * authority of the URI.
+         *
+         * @return
+         *     An indication of whether or not the URI includes
+         *     any element that is part of the authority of the
+         *     URI is returned.
+         */
+        bool HasAuthority() const {
+            return (
+                !host.empty()
+                || !userInfo.empty()
+                || hasPort
+            );
+        }
+
+        /**
          * This method builds the internal path element sequence
          * by parsing it from the given path string.
          *
@@ -1249,12 +1267,33 @@ namespace Uri {
         impl_->scheme = scheme;
     }
 
+    void Uri::SetUserInfo(const std::string& userinfo) {
+        impl_->userInfo = userinfo;
+    }
+
     void Uri::SetHost(const std::string& host) {
         impl_->host = host;
     }
 
+    void Uri::SetPort(uint16_t port) {
+        impl_->port = port;
+        impl_->hasPort = true;
+    }
+
+    void Uri::ClearPort() {
+        impl_->hasPort = false;
+    }
+
+    void Uri::SetPath(const std::vector< std::string >& path) {
+        impl_->path = path;
+    }
+
     void Uri::SetQuery(const std::string& query) {
         impl_->query = query;
+    }
+
+    void Uri::SetFragment(const std::string& fragment) {
+        impl_->fragment = fragment;
     }
 
     std::string Uri::GenerateString() const {
@@ -1262,16 +1301,42 @@ namespace Uri {
         if (!impl_->scheme.empty()) {
             buffer << impl_->scheme << ':';
         }
-        if (!impl_->host.empty()) {
+        if (impl_->HasAuthority()) {
             buffer << "//";
-            if (ValidateIpv6Address(impl_->host)) {
-                buffer << '[' << impl_->host << ']';
-            } else {
-                buffer << impl_->host;
+            if (!impl_->userInfo.empty()) {
+                buffer << impl_->userInfo << '@';
             }
+            if (!impl_->host.empty()) {
+                if (ValidateIpv6Address(impl_->host)) {
+                    buffer << '[' << impl_->host << ']';
+                } else {
+                    buffer << impl_->host;
+                }
+            }
+            if (impl_->hasPort) {
+                buffer << ':' << impl_->port;
+            }
+        }
+        // Special case: absolute but otherwise empty path.
+        if (
+            impl_->IsPathAbsolute()
+            && (impl_->path.size() == 1)
+        ) {
+            buffer << '/';
+        }
+        size_t i = 0;
+        for (const auto& segment: impl_->path) {
+            buffer << segment;
+            if (i + 1 < impl_->path.size()) {
+                buffer << '/';
+            }
+            ++i;
         }
         if (!impl_->query.empty()) {
             buffer << '?' << impl_->query;
+        }
+        if (!impl_->fragment.empty()) {
+            buffer << '#' << impl_->fragment;
         }
         return buffer.str();
     }

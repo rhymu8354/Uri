@@ -759,28 +759,54 @@ TEST(UriTests, IPv6Address) {
 TEST(UriTests, GenerateString) {
     struct TestVector {
         std::string scheme;
+        std::string userinfo;
         std::string host;
+        bool hasPort;
+        uint16_t port;
+        std::vector< std::string > path;
         std::string query;
+        std::string fragment;
         std::string expectedUriString;
     };
     const std::vector< TestVector > testVectors{
-        {"http", "www.example.com", "foobar", "http://www.example.com?foobar"},
-        {"",     "example.com",     "bar",    "//example.com?bar"},
-        {"",     "example.com",     "",       "//example.com"},
-        {"",     "",                "bar",    "?bar"},
-        {"http", "",                "bar",    "http:?bar"},
-        {"http", "",                "",       "http:"},
-        {"http", "::1",             "",       "http://[::1]"},
-        {"http", "::1.2.3.4",       "",       "http://[::1.2.3.4]"},
-        {"http", "1.2.3.4",         "",       "http://1.2.3.4"},
-        {"",     "",                "",       ""},
+        {"http", "bob", "www.example.com", true,  8080, {"", "abc", "def"}, "foobar", "ch2", "http://bob@www.example.com:8080/abc/def?foobar#ch2"},
+        {"http", "bob", "www.example.com", true,  0,    {},                 "foobar", "ch2", "http://bob@www.example.com:0?foobar#ch2"},
+        {"",     "",    "example.com",     false, 0,    {},                 "bar",    "",    "//example.com?bar"},
+        {"",     "",    "example.com",     false, 0,    {},                 "",       "",    "//example.com"},
+        {"",     "",    "example.com",     false, 0,    {""},               "",       "",    "//example.com/"},
+        {"",     "",    "example.com",     false, 0,    {"", "xyz"},        "",       "",    "//example.com/xyz"},
+        {"",     "",    "example.com",     false, 0,    {"", "xyz", ""},    "",       "",    "//example.com/xyz/"},
+        {"",     "",    "",                false, 0,    {""},               "",       "",    "/"},
+        {"",     "",    "",                false, 0,    {"", "xyz"},        "",       "",    "/xyz"},
+        {"",     "",    "",                false, 0,    {"", "xyz", ""},    "",       "",    "/xyz/"},
+        {"",     "",    "",                false, 0,    {},                 "",       "",    ""},
+        {"",     "",    "",                false, 0,    {"xyz"},            "",       "",    "xyz"},
+        {"",     "",    "",                false, 0,    {"xyz", ""},        "",       "",    "xyz/"},
+        {"",     "",    "",                false, 0,    {},                 "bar",    "",    "?bar"},
+        {"http", "",    "",                false, 0,    {},                 "bar",    "",    "http:?bar"},
+        {"http", "",    "",                false, 0,    {},                 "",       "",    "http:"},
+        {"http", "",    "::1",             false, 0,    {},                 "",       "",    "http://[::1]"},
+        {"http", "",    "::1.2.3.4",       false, 0,    {},                 "",       "",    "http://[::1.2.3.4]"},
+        {"http", "",    "1.2.3.4",         false, 0,    {},                 "",       "",    "http://1.2.3.4"},
+        {"",     "",    "",                false, 0,    {},                 "",       "",    ""},
+        {"http", "bob", "",                false, 0,    {},                 "foobar", "",    "http://bob@?foobar"},
+        {"",     "bob", "",                false, 0,    {},                 "foobar", "",    "//bob@?foobar"},
+        {"",     "bob", "",                false, 0,    {},                 "",       "",    "//bob@"},
     };
     size_t index = 0;
     for (const auto& testVector : testVectors) {
         Uri::Uri uri;
         uri.SetScheme(testVector.scheme);
+        uri.SetUserInfo(testVector.userinfo);
         uri.SetHost(testVector.host);
+        if (testVector.hasPort) {
+            uri.SetPort(testVector.port);
+        } else {
+            uri.ClearPort();
+        }
+        uri.SetPath(testVector.path);
         uri.SetQuery(testVector.query);
+        uri.SetFragment(testVector.fragment);
         const auto actualUriString = uri.GenerateString();
         ASSERT_EQ(testVector.expectedUriString, actualUriString) << index;
         ++index;

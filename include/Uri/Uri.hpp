@@ -221,6 +221,14 @@ namespace Uri {
         void SetScheme(const std::string& scheme);
 
         /**
+         * This method sets the userinfo element of the URI.
+         *
+         * @param[in] userinfo
+         *     This is the userinfo to set for the URI.
+         */
+        void SetUserInfo(const std::string& userinfo);
+
+        /**
          * This method sets the host element of the URI.
          *
          * @param[in] host
@@ -229,12 +237,50 @@ namespace Uri {
         void SetHost(const std::string& host);
 
         /**
+         * This method sets the port element of the URI.
+         *
+         * @param[in] port
+         *     This is the port to set for the URI.
+         */
+        void SetPort(uint16_t port);
+
+        /**
+         * This method removes the port element from the URI.
+         */
+        void ClearPort();
+
+        /**
+         * This method sets the path element of the URI.
+         *
+         * @param[in] path
+         *     This is the sequence of segments to use to form the path
+         *     to set for the URI.
+         *
+         *     An empty string segment can be used at the front to
+         *     indicate an absolute path (as opposed to a relative one).
+         *
+         *     An empty string segment can be used at the back to
+         *     make sure the path ends in a delimiter (forward slash)
+         *     when printed out or when combined with another URI
+         *     via the Resolve() method.
+         */
+        void SetPath(const std::vector< std::string >& path);
+
+        /**
          * This method sets the query element of the URI.
          *
          * @param[in] query
          *     This is the query to set for the URI.
          */
         void SetQuery(const std::string& query);
+
+        /**
+         * This method sets the fragment element of the URI.
+         *
+         * @param[in] fragment
+         *     This is the fragment to set for the URI.
+         */
+        void SetFragment(const std::string& fragment);
 
         /**
          * This method constructs and returns the string
