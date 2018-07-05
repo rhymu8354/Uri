@@ -381,8 +381,10 @@ namespace {
             }
             ++position;
         }
-        // TODO: should also catch IN_GROUP_NOT_IPV4
-        if (state == ValidationState::IN_GROUP_COULD_BE_IPV4) {
+        if (
+            (state == ValidationState::IN_GROUP_NOT_IPV4)
+            || (state == ValidationState::IN_GROUP_COULD_BE_IPV4)
+        ) {
             // count trailing group
             ++numGroups;
         }
