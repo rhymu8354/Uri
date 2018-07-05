@@ -259,65 +259,72 @@ namespace {
      *     is a valid IPv6 address is returned.
      */
     bool ValidateIpv6Address(const std::string& address) {
+        enum class ValidationState {
+            NO_GROUPS_YET,
+            COLON_BUT_NO_GROUPS_YET,
+            AFTER_COLON_EXPECT_GROUP_OR_IPV4,
+            IN_GROUP_NOT_IPV4,
+            IN_GROUP_COULD_BE_IPV4,
+            COLON_AFTER_GROUP,
+        } state = ValidationState::NO_GROUPS_YET;
         size_t numGroups = 0;
         size_t numDigits = 0;
         bool doubleColonEncountered = false;
-        size_t state = 0;
         size_t potentialIpv4AddressStart = 0;
         size_t position = 0;
         bool ipv4AddressEncountered = false;
         for (auto c: address) {
             switch (state) {
-                case 0: { // not in a group yet
+                case ValidationState::NO_GROUPS_YET: {
                     if (c == ':') {
-                        state = 1;
+                        state = ValidationState::COLON_BUT_NO_GROUPS_YET;
                     } else if (DIGIT.Contains(c)) {
                         potentialIpv4AddressStart = position;
                         ++numDigits = 1;
-                        state = 4;
+                        state = ValidationState::IN_GROUP_COULD_BE_IPV4;
                     } else if (HEXDIG.Contains(c)) {
                         ++numDigits = 1;
-                        state = 3;
+                        state = ValidationState::IN_GROUP_NOT_IPV4;
                     } else {
                         return false;
                     }
                 } break;
 
-                case 1: { // not in a group yet, encountered one colon
+                case ValidationState::COLON_BUT_NO_GROUPS_YET: {
                     if (c == ':') {
                         if (doubleColonEncountered) {
                             return false;
                         } else {
                             doubleColonEncountered = true;
-                            state = 2;
+                            state = ValidationState::AFTER_COLON_EXPECT_GROUP_OR_IPV4;
                         }
                     } else {
                         return false;
                     }
                 } break;
 
-                case 2: { // expect a hex digit
+                case ValidationState::AFTER_COLON_EXPECT_GROUP_OR_IPV4: {
                     if (DIGIT.Contains(c)) {
                         potentialIpv4AddressStart = position;
                         if (++numDigits > 4) {
                             return false;
                         }
-                        state = 4;
+                        state = ValidationState::IN_GROUP_COULD_BE_IPV4;
                     } else if (HEXDIG.Contains(c)) {
                         if (++numDigits > 4) {
                             return false;
                         }
-                        state = 3;
+                        state = ValidationState::IN_GROUP_NOT_IPV4;
                     } else {
                         return false;
                     }
                 } break;
 
-                case 3: { // expect either a hex digit or colon
+                case ValidationState::IN_GROUP_NOT_IPV4: {
                     if (c == ':') {
                         numDigits = 0;
                         ++numGroups;
-                        state = 5;
+                        state = ValidationState::COLON_AFTER_GROUP;
                     } else if (HEXDIG.Contains(c)) {
                         if (++numDigits > 4) {
                             return false;
@@ -327,11 +334,11 @@ namespace {
                     }
                 } break;
 
-                case 4: { // expect either a hex digit, dot, or colon
+                case ValidationState::IN_GROUP_COULD_BE_IPV4: {
                     if (c == ':') {
                         numDigits = 0;
                         ++numGroups;
-                        state = 2;
+                        state = ValidationState::AFTER_COLON_EXPECT_GROUP_OR_IPV4;
                     } else if (c == '.') {
                         ipv4AddressEncountered = true;
                         break;
@@ -343,27 +350,27 @@ namespace {
                         if (++numDigits > 4) {
                             return false;
                         }
-                        state = 3;
+                        state = ValidationState::IN_GROUP_NOT_IPV4;
                     } else {
                         return false;
                     }
                 } break;
 
-                case 5: { // were in a group, encountered one colon
+                case ValidationState::COLON_AFTER_GROUP: {
                     if (c == ':') {
                         if (doubleColonEncountered) {
                             return false;
                         } else {
                             doubleColonEncountered = true;
-                            state = 2;
+                            state = ValidationState::AFTER_COLON_EXPECT_GROUP_OR_IPV4;
                         }
                     } else if (DIGIT.Contains(c)) {
                         potentialIpv4AddressStart = position;
                         ++numDigits;
-                        state = 4;
+                        state = ValidationState::IN_GROUP_COULD_BE_IPV4;
                     } else if (HEXDIG.Contains(c)) {
                         ++numDigits;
-                        state = 3;
+                        state = ValidationState::IN_GROUP_NOT_IPV4;
                     } else {
                         return false;
                     }
@@ -374,16 +381,17 @@ namespace {
             }
             ++position;
         }
-        if (state == 4) {
+        // TODO: should also catch IN_GROUP_NOT_IPV4
+        if (state == ValidationState::IN_GROUP_COULD_BE_IPV4) {
             // count trailing group
             ++numGroups;
         }
         if (
             (position == address.length())
             && (
-                (state == 1)
-                || (state == 2)
-                || (state == 5)
+                (state == ValidationState::COLON_BUT_NO_GROUPS_YET)
+                || (state == ValidationState::AFTER_COLON_EXPECT_GROUP_OR_IPV4)
+                || (state == ValidationState::COLON_AFTER_GROUP)
             )
         ) { // trailing single colon
             return false;
