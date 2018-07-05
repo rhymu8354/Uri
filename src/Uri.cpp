@@ -317,7 +317,7 @@ namespace {
                     if (c == ':') {
                         numDigits = 0;
                         ++numGroups;
-                        state = 2;
+                        state = 5;
                     } else if (HEXDIG.Contains(c)) {
                         if (++numDigits > 4) {
                             return false;
@@ -331,6 +331,7 @@ namespace {
                     if (c == ':') {
                         numDigits = 0;
                         ++numGroups;
+                        state = 2;
                     } else if (c == '.') {
                         ipv4AddressEncountered = true;
                         break;
@@ -342,6 +343,26 @@ namespace {
                         if (++numDigits > 4) {
                             return false;
                         }
+                        state = 3;
+                    } else {
+                        return false;
+                    }
+                } break;
+
+                case 5: { // were in a group, encountered one colon
+                    if (c == ':') {
+                        if (doubleColonEncountered) {
+                            return false;
+                        } else {
+                            doubleColonEncountered = true;
+                            state = 2;
+                        }
+                    } else if (DIGIT.Contains(c)) {
+                        potentialIpv4AddressStart = position;
+                        ++numDigits;
+                        state = 4;
+                    } else if (HEXDIG.Contains(c)) {
+                        ++numDigits;
                         state = 3;
                     } else {
                         return false;
@@ -359,7 +380,11 @@ namespace {
         }
         if (
             (position == address.length())
-            && (state == 1)
+            && (
+                (state == 1)
+                || (state == 2)
+                || (state == 5)
+            )
         ) { // trailing single colon
             return false;
         }

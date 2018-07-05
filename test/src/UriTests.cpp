@@ -722,8 +722,10 @@ TEST(UriTests, IPv6Address) {
         {"http://[::1]/", "::1", true},
         {"http://[::ffff:1.2.3.4]/", "::ffff:1.2.3.4", true},
         {"http://[2001:db8:85a3:8d3:1319:8a2e:370:7348]/", "2001:db8:85a3:8d3:1319:8a2e:370:7348", true},
+        {"http://[fFfF::1]", "fFfF::1", true},
 
         // invalid
+        {"http://[::fFfF::1]", "", false},
         {"http://[::ffff:1.2.x.4]/", "", false},
         {"http://[::ffff:1.2.3.4.8]/", "", false},
         {"http://[::ffff:1.2.3]/", "", false},
