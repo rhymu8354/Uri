@@ -1393,7 +1393,7 @@ namespace Uri {
             }
             if (!impl_->host.empty()) {
                 if (ValidateIpv6Address(impl_->host)) {
-                    buffer << '[' << impl_->host << ']';
+                    buffer << '[' << NormalizeCaseInsensitiveString(impl_->host) << ']';
                 } else {
                     buffer << EncodeElement(impl_->host, REG_NAME_NOT_PCT_ENCODED);
                 }
