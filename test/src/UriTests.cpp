@@ -872,3 +872,26 @@ TEST(UriTests, QueryEmptyButPresent) {
     ASSERT_EQ("", uri.GetQuery());
     ASSERT_EQ("http://example.com/?", uri.GenerateString());
 }
+
+TEST(UriTests, MakeACopy) {
+    Uri::Uri uri1;
+    (void)uri1.ParseFromString("http://www.example.com/foo.txt");
+    Uri::Uri uri2(uri1);
+    uri1.SetQuery("bar");
+    uri2.SetFragment("page2");
+    uri2.SetHost("example.com");
+    EXPECT_EQ("http://www.example.com/foo.txt?bar", uri1.GenerateString());
+    EXPECT_EQ("http://example.com/foo.txt#page2", uri2.GenerateString());
+}
+
+TEST(UriTests, AssignACopy) {
+    Uri::Uri uri1;
+    (void)uri1.ParseFromString("http://www.example.com/foo.txt");
+    Uri::Uri uri2;
+    uri2 = uri1;
+    uri1.SetQuery("bar");
+    uri2.SetFragment("page2");
+    uri2.SetHost("example.com");
+    EXPECT_EQ("http://www.example.com/foo.txt?bar", uri1.GenerateString());
+    EXPECT_EQ("http://example.com/foo.txt#page2", uri2.GenerateString());
+}

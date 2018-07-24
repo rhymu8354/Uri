@@ -24,9 +24,9 @@ namespace Uri {
         // Lifecycle management
     public:
         ~Uri();
-        Uri(const Uri&) = delete;
+        Uri(const Uri& other);
         Uri(Uri&&);
-        Uri& operator=(const Uri&) = delete;
+        Uri& operator=(const Uri& other);
         Uri& operator=(Uri&&);
 
         // Public methods

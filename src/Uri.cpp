@@ -1217,8 +1217,19 @@ namespace Uri {
     };
 
     Uri::~Uri() = default;
+    Uri::Uri(const Uri& other)
+        : impl_(new Impl)
+    {
+        *this = other;
+    }
     Uri::Uri(Uri&&) = default;
     Uri& Uri::operator=(Uri&&) = default;
+    Uri& Uri::operator=(const Uri& other) {
+        if (this != &other) {
+            *impl_ = *other.impl_;
+        }
+        return *this;
+    }
 
     Uri::Uri()
         : impl_(new Impl)
