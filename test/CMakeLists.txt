@@ -8,7 +8,6 @@ set(This UriTests)
 set(Sources
     src/UriTests.cpp
     src/CharacterSetTests.cpp
-    src/NormalizeCaseInsensitiveStringTests.cpp
     src/PercentEncodedCharacterDecoderTests.cpp
 )
 

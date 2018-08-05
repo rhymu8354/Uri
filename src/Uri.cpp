@@ -7,7 +7,6 @@
  */
 
 #include "CharacterSet.hpp"
-#include "NormalizeCaseInsensitiveString.hpp"
 #include "PercentEncodedCharacterDecoder.hpp"
 
 #include <algorithm>
@@ -16,6 +15,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <SystemAbstractions/StringExtensions.hpp>
 #include <Uri/Uri.hpp>
 #include <vector>
 
@@ -869,7 +869,7 @@ namespace Uri {
                 return false;
             }
             if (hostIsRegName) {
-                host = NormalizeCaseInsensitiveString(host);
+                host = SystemAbstractions::ToLower(host);
             }
             if (portString.empty()) {
                 hasPort = false;
@@ -926,7 +926,7 @@ namespace Uri {
                 ) {
                     return false;
                 }
-                scheme = NormalizeCaseInsensitiveString(scheme);
+                scheme = SystemAbstractions::ToLower(scheme);
                 rest = uriString.substr(schemeEnd + 1);
             }
             return true;
@@ -1439,7 +1439,7 @@ namespace Uri {
             }
             if (!impl_->host.empty()) {
                 if (ValidateIpv6Address(impl_->host)) {
-                    buffer << '[' << NormalizeCaseInsensitiveString(impl_->host) << ']';
+                    buffer << '[' << SystemAbstractions::ToLower(impl_->host) << ']';
                 } else {
                     buffer << EncodeElement(impl_->host, REG_NAME_NOT_PCT_ENCODED);
                 }
