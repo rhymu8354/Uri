@@ -21,11 +21,11 @@ namespace Uri {
     class PercentEncodedCharacterDecoder {
         // Lifecycle management
     public:
-        ~PercentEncodedCharacterDecoder();
+        ~PercentEncodedCharacterDecoder() noexcept;
         PercentEncodedCharacterDecoder(const PercentEncodedCharacterDecoder&) = delete;
-        PercentEncodedCharacterDecoder(PercentEncodedCharacterDecoder&&);
+        PercentEncodedCharacterDecoder(PercentEncodedCharacterDecoder&&) noexcept;
         PercentEncodedCharacterDecoder& operator=(const PercentEncodedCharacterDecoder&) = delete;
-        PercentEncodedCharacterDecoder& operator=(PercentEncodedCharacterDecoder&&);
+        PercentEncodedCharacterDecoder& operator=(PercentEncodedCharacterDecoder&&) noexcept;
 
         // Methods
     public:

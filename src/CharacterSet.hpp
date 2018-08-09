@@ -21,11 +21,11 @@ namespace Uri {
     class CharacterSet {
         // Lifecycle management
     public:
-        ~CharacterSet();
+        ~CharacterSet() noexcept;
         CharacterSet(const CharacterSet&);
-        CharacterSet(CharacterSet&&);
+        CharacterSet(CharacterSet&&) noexcept;
         CharacterSet& operator=(const CharacterSet&);
-        CharacterSet& operator=(CharacterSet&&);
+        CharacterSet& operator=(CharacterSet&&) noexcept;
 
         // Methods
     public:

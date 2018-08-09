@@ -23,19 +23,19 @@ namespace Uri {
         std::set< char > charactersInSet;
     };
 
-    CharacterSet::~CharacterSet() = default;
+    CharacterSet::~CharacterSet() noexcept = default;
     CharacterSet::CharacterSet(const CharacterSet& other)
         : impl_(new Impl(*other.impl_))
     {
     }
-    CharacterSet::CharacterSet(CharacterSet&& other) = default;
+    CharacterSet::CharacterSet(CharacterSet&& other) noexcept = default;
     CharacterSet& CharacterSet::operator=(const CharacterSet& other) {
         if (this != &other) {
             *impl_ = *other.impl_;
         }
         return *this;
     }
-    CharacterSet& CharacterSet::operator=(CharacterSet&& other) = default;
+    CharacterSet& CharacterSet::operator=(CharacterSet&& other) noexcept = default;
 
     CharacterSet::CharacterSet()
         : impl_(new Impl)

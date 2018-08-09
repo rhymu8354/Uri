@@ -23,11 +23,11 @@ namespace Uri {
     class Uri {
         // Lifecycle management
     public:
-        ~Uri();
+        ~Uri() noexcept;
         Uri(const Uri& other);
-        Uri(Uri&&);
+        Uri(Uri&&) noexcept;
         Uri& operator=(const Uri& other);
-        Uri& operator=(Uri&&);
+        Uri& operator=(Uri&&) noexcept;
 
         // Public methods
     public:

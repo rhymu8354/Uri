@@ -75,9 +75,9 @@ namespace Uri {
         }
     };
 
-    PercentEncodedCharacterDecoder::~PercentEncodedCharacterDecoder() = default;
-    PercentEncodedCharacterDecoder::PercentEncodedCharacterDecoder(PercentEncodedCharacterDecoder&&) = default;
-    PercentEncodedCharacterDecoder& PercentEncodedCharacterDecoder::operator=(PercentEncodedCharacterDecoder&&) = default;
+    PercentEncodedCharacterDecoder::~PercentEncodedCharacterDecoder() noexcept = default;
+    PercentEncodedCharacterDecoder::PercentEncodedCharacterDecoder(PercentEncodedCharacterDecoder&&) noexcept = default;
+    PercentEncodedCharacterDecoder& PercentEncodedCharacterDecoder::operator=(PercentEncodedCharacterDecoder&&) noexcept = default;
 
     PercentEncodedCharacterDecoder::PercentEncodedCharacterDecoder()
         : impl_(new Impl)
