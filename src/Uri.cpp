@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <functional>
 #include <inttypes.h>
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -128,44 +129,6 @@ namespace {
         SUB_DELIMS,
         ':'
     };
-
-    /**
-     * This function parses the given string as an unsigned 16-bit
-     * integer, detecting invalid characters, overflow, etc.
-     *
-     * @param[in] numberString
-     *     This is the string containing the number to parse.
-     *
-     * @param[out] number
-     *     This is where to store the number parsed.
-     *
-     * @return
-     *     An indication of whether or not the number was parsed
-     *     successfully is returned.
-     */
-    bool ParseUint16(
-        const std::string& numberString,
-        uint16_t& number
-    ) {
-        uint32_t numberIn32Bits = 0;
-        for (auto c: numberString) {
-            if (
-                (c < '0')
-                || (c > '9')
-            ) {
-                return false;
-            }
-            numberIn32Bits *= 10;
-            numberIn32Bits += (uint16_t)(c - '0');
-            if (
-                (numberIn32Bits & ~((1 << 16) - 1)) != 0
-            ) {
-                return false;
-            }
-        }
-        number = (uint16_t)numberIn32Bits;
-        return true;
-    }
 
     /**
      * This function checks to make sure the given string
@@ -874,9 +837,22 @@ namespace Uri {
             if (portString.empty()) {
                 hasPort = false;
             } else {
-                if (!ParseUint16(portString, port)) {
+                intmax_t portAsInt;
+                if (
+                    SystemAbstractions::ToInteger(
+                        portString,
+                        portAsInt
+                    ) != SystemAbstractions::ToIntegerResult::Success
+                ) {
                     return false;
                 }
+                if (
+                    (portAsInt < 0)
+                    || (portAsInt > (decltype(portAsInt))std::numeric_limits< decltype(port) >::max())
+                ) {
+                    return false;
+                }
+                port = (decltype(port))portAsInt;
                 hasPort = true;
             }
             return true;
