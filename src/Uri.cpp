@@ -724,7 +724,6 @@ namespace Uri {
             // Next, parsing host and port from authority and path.
             std::string portString;
             HostParsingState hostParsingState = HostParsingState::FIRST_CHARACTER;
-            int decodedCharacter = 0;
             host.clear();
             PercentEncodedCharacterDecoder pecDecoder;
             bool hostIsRegName = false;
@@ -893,7 +892,6 @@ namespace Uri {
                 rest = uriString;
             } else {
                 scheme = uriString.substr(0, schemeEnd);
-                bool isFirstCharacter = true;
                 if (
                     FailsMatch(
                         scheme,
