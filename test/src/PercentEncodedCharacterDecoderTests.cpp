@@ -21,6 +21,8 @@ TEST(PercentEncodedCharacterDecoderTests, GoodSequences) {
         {{'4', '1'}, 'A'},
         {{'5', 'A'}, 'Z'},
         {{'6', 'e'}, 'n'},
+        {{'e', '1'}, (char)0xe1},
+        {{'C', 'A'}, (char)0xca},
     };
     size_t index = 0;
     for (auto testVector: testVectors) {
