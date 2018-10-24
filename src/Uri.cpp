@@ -1158,6 +1158,7 @@ namespace Uri {
          *     This is the other URI from which to copy the query.
          */
         void CopyQuery(const Uri& other) {
+            hasQuery = other.impl_->hasQuery;
             query = other.impl_->query;
         }
 
@@ -1169,6 +1170,7 @@ namespace Uri {
          *     This is the other URI from which to copy the query.
          */
         void CopyFragment(const Uri& other) {
+            hasFragment = other.impl_->hasFragment;
             fragment = other.impl_->fragment;
         }
 
@@ -1223,8 +1225,20 @@ namespace Uri {
                 )
             )
             && (impl_->path == other.impl_->path)
-            && (impl_->query == other.impl_->query)
-            && (impl_->fragment == other.impl_->fragment)
+            && (
+                (!impl_->hasQuery && !other.impl_->hasQuery)
+                || (
+                    (impl_->hasQuery && other.impl_->hasQuery)
+                    && (impl_->query == other.impl_->query)
+                )
+            )
+            && (
+                (!impl_->hasFragment && !other.impl_->hasFragment)
+                || (
+                    (impl_->hasFragment && other.impl_->hasFragment)
+                    && (impl_->fragment == other.impl_->fragment)
+                )
+            )
         );
     }
 

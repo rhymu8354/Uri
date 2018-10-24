@@ -688,6 +688,8 @@ TEST(UriTests, ReferenceResolution) {
         {"http://example.com/", "/foo", "http://example.com/foo"},
         {"http://example.com", "/foo/", "http://example.com/foo/"},
         {"http://example.com/", "/foo/", "http://example.com/foo/"},
+        {"http://example.com/", "?foo", "http://example.com/?foo"},
+        {"http://example.com/", "#foo", "http://example.com/#foo"},
     };
     size_t index = 0;
     for (const auto& testVector : testVectors) {
