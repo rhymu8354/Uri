@@ -898,3 +898,11 @@ TEST(UriTests, AssignACopy) {
     EXPECT_EQ("http://www.example.com/foo.txt?bar", uri1.GenerateString());
     EXPECT_EQ("http://example.com/foo.txt#page2", uri2.GenerateString());
 }
+
+TEST(UriTests, ClearQuery) {
+    Uri::Uri uri;
+    (void)uri.ParseFromString("http://www.example.com/?foo=bar");
+    uri.ClearQuery();
+    EXPECT_EQ("http://www.example.com/", uri.GenerateString());
+    EXPECT_FALSE(uri.HasQuery());
+}
