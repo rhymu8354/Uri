@@ -520,7 +520,7 @@ namespace {
         const Uri::CharacterSet& allowedCharacters
     ) {
         std::string encodedElement;
-        for (auto c: element) {
+        for (uint8_t c: element) {
             if (allowedCharacters.Contains(c)) {
                 encodedElement.push_back(c);
             } else {
