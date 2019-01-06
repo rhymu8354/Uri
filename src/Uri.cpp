@@ -775,8 +775,6 @@ namespace Uri {
                     }
 
                     case HostParsingState::IPV6_ADDRESS: {
-                        // TODO: research this offline first
-                        // before attempting to code it
                         if (c == ']') {
                             if (!ValidateIpv6Address(host)) {
                                 return false;
