@@ -906,3 +906,16 @@ TEST(UriTests, ClearQuery) {
     EXPECT_EQ("http://www.example.com/", uri.GenerateString());
     EXPECT_FALSE(uri.HasQuery());
 }
+
+TEST(UriTests, PercentEncodePlusInQueries) {
+    // Although RFC 3986 doesn't say anything about '+', some web services
+    // treat it the same as ' ' due to how HTML originally defined how
+    // to encode the query portion of a URL
+    // (see https://stackoverflow.com/questions/2678551/when-to-encode-space-to-plus-or-20).
+    //
+    // To avoid issues with these web services, make sure '+' is
+    // percent-encoded in a URI when the URI is encoded.
+    Uri::Uri uri;
+    uri.SetQuery("foo+bar");
+    EXPECT_EQ("?foo%2Bbar", uri.GenerateString());
+}

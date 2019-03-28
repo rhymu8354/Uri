@@ -99,6 +99,21 @@ namespace {
     };
 
     /**
+     * This is the character set almost corresponds to the "query" syntax
+     * specified in RFC 3986 (https://tools.ietf.org/html/rfc3986),
+     * leaving out "pct-encoded", except that '+' is also excluded, because
+     * for some web services (e.g. AWS S3) a '+' is treated as
+     * synonymous with a space (' ') and thus gets misinterpreted.
+     */
+    const Uri::CharacterSet QUERY_NOT_PCT_ENCODED_WITHOUT_PLUS{
+        UNRESERVED,
+        '!', '$', '&', '\'', '(', ')',
+        '*', ',', ';', '=',
+        ':', '@',
+        '/', '?'
+    };
+
+    /**
      * This is the character set corresponds to the "userinfo" syntax
      * specified in RFC 3986 (https://tools.ietf.org/html/rfc3986),
      * leaving out "pct-encoded".
@@ -1450,7 +1465,7 @@ namespace Uri {
             ++i;
         }
         if (impl_->hasQuery) {
-            buffer << '?' << EncodeElement(impl_->query, QUERY_OR_FRAGMENT_NOT_PCT_ENCODED);
+            buffer << '?' << EncodeElement(impl_->query, QUERY_NOT_PCT_ENCODED_WITHOUT_PLUS);
         }
         if (impl_->hasFragment) {
             buffer << '#' << EncodeElement(impl_->fragment, QUERY_OR_FRAGMENT_NOT_PCT_ENCODED);
