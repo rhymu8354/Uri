@@ -258,10 +258,10 @@ namespace {
                         state = ValidationState::COLON_BUT_NO_GROUPS_YET;
                     } else if (DIGIT.Contains(c)) {
                         potentialIpv4AddressStart = position;
-                        ++numDigits = 1;
+                        numDigits = 1;
                         state = ValidationState::IN_GROUP_COULD_BE_IPV4;
                     } else if (HEXDIG.Contains(c)) {
-                        ++numDigits = 1;
+                        numDigits = 1;
                         state = ValidationState::IN_GROUP_NOT_IPV4;
                     } else {
                         return false;
