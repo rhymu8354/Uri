@@ -9,6 +9,7 @@
 
 #include "CharacterSet.hpp"
 
+#include <algorithm>
 #include <set>
 
 namespace Uri {
@@ -51,6 +52,9 @@ namespace Uri {
     CharacterSet::CharacterSet(char first, char last)
         : impl_(new Impl)
     {
+        if (first > last) {
+            std::swap(first, last);
+        }
         for (char c = first; c < last + 1; ++c) {
             (void)impl_->charactersInSet.insert(c);
         }

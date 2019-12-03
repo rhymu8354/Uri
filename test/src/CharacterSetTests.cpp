@@ -43,6 +43,20 @@ TEST(CharacterSetTests, RangeConstructor) {
     }
 }
 
+TEST(CharacterSetTests, Range_Constructor_Reversed) {
+    Uri::CharacterSet cs('G', 'A');
+    for (char c = 0; c < 0x7F; ++c) {
+        if (
+            (c >= 'A')
+            && (c <= 'G')
+        ) {
+            ASSERT_TRUE(cs.Contains(c));
+        } else {
+            ASSERT_FALSE(cs.Contains(c));
+        }
+    }
+}
+
 TEST(CharacterSetTests, InitializerListConstructor) {
     Uri::CharacterSet cs1{'X'};
     for (char c = 0; c < 0x7F; ++c) {
