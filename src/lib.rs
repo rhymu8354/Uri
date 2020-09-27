@@ -821,4 +821,282 @@ mod tests {
         }
     }
 
+    #[test]
+    fn empty_path_in_uri_with_authority_is_equivalent_to_slash_only_path() {
+        let uri1 = uriparse::URIReference::try_from("http://example.com");
+        assert!(uri1.is_ok());
+        let uri1 = uri1.unwrap();
+        let uri2 = uriparse::URIReference::try_from("http://example.com/");
+        assert!(uri2.is_ok());
+        let uri2 = uri2.unwrap();
+        assert_eq!(uri1, uri2);
+        let uri1 = uriparse::URIReference::try_from("//example.com");
+        assert!(uri1.is_ok());
+        let uri1 = uri1.unwrap();
+        let uri2 = uriparse::URIReference::try_from("//example.com/");
+        assert!(uri2.is_ok());
+        let uri2 = uri2.unwrap();
+        assert_eq!(uri1, uri2);
+    }
+
+    #[test]
+    fn ipv6_address() {
+        struct TestVector {
+            uri_string: &'static str,
+            expected_host: Option<&'static str>
+        };
+        let test_vectors = [
+            // valid
+            TestVector{ uri_string: "http://[::1]/", expected_host: Some("[::1]") },
+
+            // FIXME: RFC 3986 allows the least-significant 32-bits of an
+            // IPv6 address to be represented in IPv4 address textual
+            // format, but unfortunately uriparse doesn't support it.
+            //
+            // https://github.com/sgodwincs/uriparse-rs/issues/17
+            //
+            //TestVector{ uri_string: "http://[::ffff:1.2.3.4]/", expected_host: Some("[::ffff:1.2.3.4]") },
+
+            TestVector{ uri_string: "http://[2001:db8:85a3:8d3:1319:8a2e:370:7348]/", expected_host: Some("[2001:db8:85a3:8d3:1319:8a2e:370:7348]") },
+            TestVector{ uri_string: "http://[fFfF::1]", expected_host: Some("[fFfF::1]") },
+            TestVector{ uri_string: "http://[fFfF:1:2:3:4:5:6:a]", expected_host: Some("[fFfF:1:2:3:4:5:6:a]") },
+
+            // invalid
+            TestVector{ uri_string: "http://[::fFfF::1]", expected_host: None },
+            TestVector{ uri_string: "http://[::ffff:1.2.x.4]/", expected_host: None },
+            TestVector{ uri_string: "http://[::ffff:1.2.3.4.8]/", expected_host: None },
+            TestVector{ uri_string: "http://[::ffff:1.2.3]/", expected_host: None },
+            TestVector{ uri_string: "http://[::ffff:1.2.3.]/", expected_host: None },
+            TestVector{ uri_string: "http://[::ffff:1.2.3.256]/", expected_host: None },
+            TestVector{ uri_string: "http://[::fxff:1.2.3.4]/", expected_host: None },
+            TestVector{ uri_string: "http://[::ffff:1.2.3.-4]/", expected_host: None },
+            TestVector{ uri_string: "http://[::ffff:1.2.3. 4]/", expected_host: None },
+            TestVector{ uri_string: "http://[::ffff:1.2.3.4 ]/", expected_host: None },
+            TestVector{ uri_string: "http://[::ffff:1.2.3.4/", expected_host: None },
+            TestVector{ uri_string: "http://::ffff:1.2.3.4]/", expected_host: None },
+            TestVector{ uri_string: "http://::ffff:a.2.3.4]/", expected_host: None },
+            TestVector{ uri_string: "http://::ffff:1.a.3.4]/", expected_host: None },
+            TestVector{ uri_string: "http://[2001:db8:85a3:8d3:1319:8a2e:370:7348:0000]/", expected_host: None },
+            TestVector{ uri_string: "http://[2001:db8:85a3::8a2e:0:]/", expected_host: None },
+            TestVector{ uri_string: "http://[2001:db8:85a3::8a2e::]/", expected_host: None },
+            TestVector{ uri_string: "http://[]/", expected_host: None },
+            TestVector{ uri_string: "http://[:]/", expected_host: None },
+            TestVector{ uri_string: "http://[v]/", expected_host: None },
+        ];
+        for test_vector in &test_vectors {
+            let uri = uriparse::URIReference::try_from(test_vector.uri_string);
+            if let Some(host) = test_vector.expected_host {
+                assert!(uri.is_ok());
+                assert_eq!(
+                    &uriparse::Host::try_from(host).unwrap(),
+                    uri.unwrap().host().unwrap()
+                );
+            } else {
+                assert!(uri.is_err());
+            }
+        }
+    }
+
+    #[test]
+    fn generate_string() {
+        struct TestVector {
+            scheme: Option<&'static str>,
+            username: Option<&'static str>,
+            host: Option<&'static str>,
+            port: Option<u16>,
+            path: &'static str,
+            query: Option<&'static str>,
+            fragment: Option<&'static str>,
+            expected_uri_string: &'static str
+        };
+        let test_vectors = [
+            // general test vectors
+            TestVector{ scheme: Some("http"), username: Some("bob"), host: Some("www.example.com"), port: Some(8080), path: "/abc/def",  query: Some("foobar"),   fragment: Some("ch2"),   expected_uri_string: "http://bob@www.example.com:8080/abc/def?foobar#ch2" },
+
+            // NOTE: uriparse unnecessarily adds a '/' character to the path for these cases.
+            // Technically it's not an error, but it differs from our C++ implementation
+            // and adds an unnecessary character.
+            TestVector{ scheme: Some("http"), username: Some("bob"), host: Some("www.example.com"), port: Some(0), path: "",      query: Some("foobar"), fragment: Some("ch2"), expected_uri_string: "http://bob@www.example.com:0/?foobar#ch2" },
+            TestVector{ scheme: Some("http"), username: Some("bob"), host: Some("www.example.com"), port: Some(0), path: "",      query: Some("foobar"), fragment: Some(""),    expected_uri_string: "http://bob@www.example.com:0/?foobar#" },
+            TestVector{ scheme: None,         username: None,        host: Some("example.com"),     port: None,    path: "",      query: Some("bar"),    fragment: None,        expected_uri_string: "//example.com/?bar" },
+            TestVector{ scheme: None,         username: None,        host: Some("example.com"),     port: None,    path: "",      query: Some(""),       fragment: None,        expected_uri_string: "//example.com/?" },
+            TestVector{ scheme: None,         username: None,        host: Some("example.com"),     port: None,    path: "",      query: None,           fragment: None,        expected_uri_string: "//example.com/" },
+
+            TestVector{ scheme: None,         username: None,        host: Some("example.com"),     port: None,    path: "/",     query: None,           fragment: None,        expected_uri_string: "//example.com/" },
+            TestVector{ scheme: None,         username: None,        host: Some("example.com"),     port: None,    path: "/xyz",  query: None,           fragment: None,        expected_uri_string: "//example.com/xyz" },
+            TestVector{ scheme: None,         username: None,        host: Some("example.com"),     port: None,    path: "/xyz/", query: None,           fragment: None,        expected_uri_string: "//example.com/xyz/" },
+            TestVector{ scheme: None,         username: None,        host: None,                    port: None,    path: "/",     query: None,           fragment: None,        expected_uri_string: "/" },
+            TestVector{ scheme: None,         username: None,        host: None,                    port: None,    path: "/xyz",  query: None,           fragment: None,        expected_uri_string: "/xyz" },
+            TestVector{ scheme: None,         username: None,        host: None,                    port: None,    path: "/xyz/", query: None,           fragment: None,        expected_uri_string: "/xyz/" },
+            TestVector{ scheme: None,         username: None,        host: None,                    port: None,    path: "",      query: None,           fragment: None,        expected_uri_string: "" },
+            TestVector{ scheme: None,         username: None,        host: None,                    port: None,    path: "xyz",   query: None,           fragment: None,        expected_uri_string: "xyz" },
+            TestVector{ scheme: None,         username: None,        host: None,                    port: None,    path: "xyz/",  query: None,           fragment: None,        expected_uri_string: "xyz/" },
+            TestVector{ scheme: None,         username: None,        host: None,                    port: None,    path: "",      query: Some("bar"),    fragment: None,        expected_uri_string: "?bar" },
+            TestVector{ scheme: Some("http"), username: None,        host: None,                    port: None,    path: "",      query: Some("bar"),    fragment: None,        expected_uri_string: "http:?bar" },
+            TestVector{ scheme: Some("http"), username: None,        host: None,                    port: None,    path: "",      query: None,           fragment: None,        expected_uri_string: "http:" },
+
+            // NOTE: uriparse unnecessarily adds a '/' character to the path for this case.
+            // Technically it's not an error, but it differs from our C++ implementation
+            // and adds an unnecessary character.
+            TestVector{ scheme: Some("http"), username: None, host: Some("[::1]"), port: None, path: "", query: None, fragment: None, expected_uri_string: "http://[::1]/" },
+
+            // FIXME: RFC 3986 allows the least-significant 32-bits of an
+            // IPv6 address to be represented in IPv4 address textual
+            // format, but unfortunately uriparse doesn't support it.
+            //
+            // https://github.com/sgodwincs/uriparse-rs/issues/17
+            //
+            // TestVector{ scheme: Some("http"), username: None,        host: Some("[::1.2.3.4]"),     port: None,       path: "",          query: None,             fragment: None,          expected_uri_string: "http://[::1.2.3.4]/" },
+
+            TestVector{ scheme: Some("http"), username: None, host: Some("1.2.3.4"), port: None, path: "", query: None, fragment: None, expected_uri_string: "http://1.2.3.4/" },
+            TestVector{ scheme: None,         username: None, host: None,            port: None, path: "", query: None, fragment: None, expected_uri_string: "" },
+
+            // Note: Because uriparse requires a host to emit any authority,
+            // we have to use some empty string for host to signal that
+            // we want to include an authority when we are building the URI.
+            //
+            // NOTE: uriparse unnecessarily adds a '/' character to the path for this case.
+            // Technically it's not an error, but it differs from our C++ implementation
+            // and adds an unnecessary character.
+            TestVector{ scheme: Some("http"), username: Some("bob"), host: Some(""), port: None, path: "", query: Some("foobar"), fragment: None, expected_uri_string: "http://bob@/?foobar" },
+            TestVector{ scheme: None,         username: Some("bob"), host: Some(""), port: None, path: "", query: Some("foobar"), fragment: None, expected_uri_string: "//bob@/?foobar" },
+            TestVector{ scheme: None,         username: Some("bob"), host: Some(""), port: None, path: "", query: None,           fragment: None, expected_uri_string: "//bob@/" },
+
+            // percent-encoded character test vectors
+            //
+            // NOTE: uriparse does not do the percent-encoding for us,
+            // but we can still verify that the URI builder works with them.
+            TestVector{ scheme: Some("http"), username: Some("b%20b"), host: Some("www.example.com"),   port: Some(8080), path: "/abc/def",   query: Some("foobar"),   fragment: Some("ch2"),   expected_uri_string: "http://b%20b@www.example.com:8080/abc/def?foobar#ch2" },
+            TestVector{ scheme: Some("http"), username: Some("bob"),   host: Some("www.e%20ample.com"), port: Some(8080), path: "/abc/def",   query: Some("foobar"),   fragment: Some("ch2"),   expected_uri_string: "http://bob@www.e%20ample.com:8080/abc/def?foobar#ch2" },
+            TestVector{ scheme: Some("http"), username: Some("bob"),   host: Some("www.example.com"),   port: Some(8080), path: "/a%20c/def", query: Some("foobar"),   fragment: Some("ch2"),   expected_uri_string: "http://bob@www.example.com:8080/a%20c/def?foobar#ch2" },
+            TestVector{ scheme: Some("http"), username: Some("bob"),   host: Some("www.example.com"),   port: Some(8080), path: "/abc/def",   query: Some("foo%20ar"), fragment: Some("ch2"),   expected_uri_string: "http://bob@www.example.com:8080/abc/def?foo%20ar#ch2" },
+            TestVector{ scheme: Some("http"), username: Some("bob"),   host: Some("www.example.com"),   port: Some(8080), path: "/abc/def",   query: Some("foobar"),   fragment: Some("c%202"), expected_uri_string: "http://bob@www.example.com:8080/abc/def?foobar#c%202" },
+
+            // Note: uriparse refuses to decode the percent encodings
+            // of non-ASCII characters, even if they represent valid
+            // UTF-8 encodings.  So we have to keep them percent-encoded,
+            // unfortunately.
+            TestVector{ scheme: Some("http"), username: Some("bob"), host: Some("%E1%88%B4.example.com"),   port: Some(8080), path: "/abc/def",  query: Some("foobar"),   fragment: None,          expected_uri_string: "http://bob@%E1%88%B4.example.com:8080/abc/def?foobar" },
+
+            // normalization of IPv6 address hex digits
+            TestVector{ scheme: Some("http"), username: Some("bob"), host: Some("[fFfF::1]"),       port: Some(8080), path: "/abc/def",  query: Some("foobar"),   fragment: Some("c%202"), expected_uri_string: "http://bob@[ffff::1]:8080/abc/def?foobar#c%202" },
+        ];
+        for test_vector in &test_vectors {
+            let mut uri_builder = uriparse::URIReferenceBuilder::new();
+            uri_builder
+                .scheme(test_vector.scheme.map(|scheme| uriparse::Scheme::try_from(scheme).unwrap()))
+                .authority(
+                    match test_vector.host {
+                        None => None,
+                        Some(host) => Some(
+                            uriparse::Authority::from_parts(
+                                test_vector.username.map(|username| uriparse::Username::try_from(username).unwrap()),
+                                None::<uriparse::Password>,
+                                uriparse::Host::try_from(host).unwrap(),
+                                test_vector.port
+                            ).unwrap()
+                        )
+                    }
+                )
+                .path(uriparse::Path::try_from(test_vector.path).unwrap())
+                .query(test_vector.query.map(|query| uriparse::Query::try_from(query).unwrap()))
+                .fragment(test_vector.fragment.map(|fragment| uriparse::Fragment::try_from(fragment).unwrap()));
+            let uri = uri_builder.build().unwrap();
+            assert_eq!(
+                test_vector.expected_uri_string,
+                uri.to_string()
+            );
+        }
+    }
+
+    #[test]
+    fn fragment_empty_but_present() {
+        let uri = uriparse::URIReference::try_from("http://example.com#");
+        assert!(uri.is_ok());
+        let mut uri = uri.unwrap();
+        assert_eq!(
+            Some(&uriparse::Fragment::try_from("").unwrap()),
+            uri.fragment()
+        );
+        assert_eq!(uri.to_string(), "http://example.com/#");
+        uri.set_fragment(None::<uriparse::Fragment>).unwrap();
+        assert_eq!(uri.to_string(), "http://example.com/");
+        assert_eq!(None, uri.fragment());
+
+        let uri = uriparse::URIReference::try_from("http://example.com");
+        assert!(uri.is_ok());
+        let mut uri = uri.unwrap();
+        assert_eq!(None, uri.fragment());
+        uri.set_fragment(uriparse::Fragment::try_from("").ok()).unwrap();
+        assert_eq!(
+            Some(&uriparse::Fragment::try_from("").unwrap()),
+            uri.fragment()
+        );
+        assert_eq!(uri.to_string(), "http://example.com/#");
+    }
+
+    #[test]
+    fn query_empty_but_present() {
+        let uri = uriparse::URIReference::try_from("http://example.com?");
+        assert!(uri.is_ok());
+        let mut uri = uri.unwrap();
+        assert_eq!(
+            Some(&uriparse::Query::try_from("").unwrap()),
+            uri.query()
+        );
+        assert_eq!(uri.to_string(), "http://example.com/?");
+        uri.set_query(None::<uriparse::Query>).unwrap();
+        assert_eq!(uri.to_string(), "http://example.com/");
+        assert_eq!(None, uri.query());
+
+        let uri = uriparse::URIReference::try_from("http://example.com");
+        assert!(uri.is_ok());
+        let mut uri = uri.unwrap();
+        assert_eq!(None, uri.query());
+        uri.set_query(uriparse::Query::try_from("").ok()).unwrap();
+        assert_eq!(
+            Some(&uriparse::Query::try_from("").unwrap()),
+            uri.query()
+        );
+        assert_eq!(uri.to_string(), "http://example.com/?");
+    }
+
+    #[test]
+    fn make_a_copy() {
+        let mut uri1 = uriparse::URIReference::try_from("http://www.example.com/foo.txt").unwrap();
+        let mut uri2 = uri1.clone();
+        uri1.set_query(Some("bar")).unwrap();
+        uri2.set_fragment(Some("page2")).unwrap();
+        let mut uri2_new_auth = uri2.authority().unwrap().clone();
+        uri2_new_auth.set_host("example.com").unwrap();
+        uri2.set_authority(Some(uri2_new_auth)).unwrap();
+        assert_eq!(uri1.to_string(), "http://www.example.com/foo.txt?bar");
+        assert_eq!(uri2.to_string(), "http://example.com/foo.txt#page2");
+    }
+
+    #[test]
+    fn clear_query() {
+        let mut uri = uriparse::URIReference::try_from("http://www.example.com/?foo=bar").unwrap();
+        uri.set_query(None::<uriparse::Query>).unwrap();
+        assert_eq!(uri.to_string(), "http://www.example.com/");
+        assert_eq!(None, uri.query());
+    }
+
+    // NOTE: The following test is commented out because uriparse does not
+    // percent-encode '+' for us.
+    //
+    // #[test]
+    // fn percent_encode_plus_in_queries() {
+    //     // Although RFC 3986 doesn't say anything about '+', some web services
+    //     // treat it the same as ' ' due to how HTML originally defined how
+    //     // to encode the query portion of a URL
+    //     // (see https://stackoverflow.com/questions/2678551/when-to-encode-space-to-plus-or-20).
+    //     //
+    //     // To avoid issues with these web services, make sure '+' is
+    //     // percent-encoded in a URI when the URI is encoded.
+    //     let mut uri = uriparse::URIReference::try_from("").unwrap();
+    //     uri.set_query(Some("foo+bar")).unwrap();
+    //     assert_eq!(uri.to_string(), "?foo%2Bbar");
+    // }
+
 }
