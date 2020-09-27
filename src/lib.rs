@@ -1027,7 +1027,7 @@ mod tests {
         assert!(uri.is_ok());
         let mut uri = uri.unwrap();
         assert_eq!(None, uri.fragment());
-        uri.set_fragment(uriparse::Fragment::try_from("").ok()).unwrap();
+        uri.set_fragment(Some("")).unwrap();
         assert_eq!(
             Some(&uriparse::Fragment::try_from("").unwrap()),
             uri.fragment()
@@ -1053,7 +1053,7 @@ mod tests {
         assert!(uri.is_ok());
         let mut uri = uri.unwrap();
         assert_eq!(None, uri.query());
-        uri.set_query(uriparse::Query::try_from("").ok()).unwrap();
+        uri.set_query(Some("")).unwrap();
         assert_eq!(
             Some(&uriparse::Query::try_from("").unwrap()),
             uri.query()
