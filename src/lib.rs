@@ -441,6 +441,17 @@ mod tests {
     }
 
     #[test]
+    fn parse_from_string_host_ends_in_dot() {
+        let uri = uriparse::URIReference::try_from("http://example.com./foo");
+        assert!(uri.is_ok());
+        let uri = uri.unwrap();
+        assert_eq!(
+            Some(&uriparse::Host::try_from("example.com.").unwrap()),
+            uri.host()
+        );
+    }
+
+    #[test]
     fn parse_from_string_dont_misinterpret_colon_in_other_places_as_scheme_delimiter() {
         let test_vectors = [
             "//foo:bar@www.example.com/",

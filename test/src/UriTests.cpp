@@ -292,6 +292,12 @@ TEST(UriTests, ParseFromStringSchemeMixedCase) {
     }
 }
 
+TEST(UriTests, ParseFromStringHostEndsInDot) {
+    Uri::Uri uri;
+    ASSERT_TRUE(uri.ParseFromString("http://example.com./foo"));
+    ASSERT_EQ("example.com.", uri.GetHost());
+}
+
 TEST(UriTests, ParseFromStringUserInfoIllegalCharacters) {
     const std::vector< std::string > testVectors{
         {"//%X@www.example.com/"},
