@@ -1,5 +1,5 @@
 [package]
-name = "Uri"
+name = "uri"
 version = "0.1.0"
 authors = ["Richard Walters <rwalters@digitalstirling.com>"]
 edition = "2018"
