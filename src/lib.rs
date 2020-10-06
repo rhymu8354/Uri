@@ -1,27 +1,249 @@
 #![warn(clippy::pedantic)]
+#![allow(clippy::missing_errors_doc)]
+
+#[macro_use]
+extern crate lazy_static;
+
+use std::collections::HashSet;
+
+// This is the character set containing just the alphabetic characters
+// from the ASCII character set.
+//
+// TODO: improvement
+// [16:16] silen_z: btw char::is_ascii_letter or something like that exists
+lazy_static! {
+    static ref ALPHA: HashSet<char> =
+        ('a'..='z')
+        .chain('A'..='Z')
+        .collect::<HashSet<char>>();
+}
+
+// This is the character set containing just numbers.
+lazy_static! {
+    static ref DIGIT: HashSet<char> =
+        ('0'..='9')
+        .collect::<HashSet<char>>();
+}
+
+// This is the character set corresponds to the "unreserved" syntax
+// specified in RFC 3986 (https://tools.ietf.org/html/rfc3986).
+lazy_static! {
+    static ref UNRESERVED: HashSet<char> =
+        ALPHA.iter()
+        .chain(DIGIT.iter())
+        .chain(['-', '.', '_', '~'].iter())
+        .copied()
+        .collect::<HashSet<char>>();
+}
+
+// This is the character set corresponds to the "sub-delims" syntax
+// specified in RFC 3986 (https://tools.ietf.org/html/rfc3986).
+lazy_static! {
+    static ref SUB_DELIMS: HashSet<char> =
+        [
+            '!', '$', '&', '\'', '(', ')',
+            '*', '+', ',', ';', '='
+        ]
+        .iter()
+        .copied()
+        .collect::<HashSet<char>>();
+}
+
+// This is the character set corresponds to the "pchar" syntax
+// specified in RFC 3986 (https://tools.ietf.org/html/rfc3986),
+// leaving out "pct-encoded".
+lazy_static! {
+    static ref PCHAR_NOT_PCT_ENCODED: HashSet<char> =
+        UNRESERVED.iter()
+        .chain(SUB_DELIMS.iter())
+        .chain([':', '@'].iter())
+        .copied()
+        .collect::<HashSet<char>>();
+}
+
+#[derive(Debug, Clone)]
+pub enum Error {
+    EmptyScheme,
+    SchemeWithIllegalCharacter,
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::EmptyScheme => {
+                write!(f, "scheme expected but missing")
+            },
+
+            Error::SchemeWithIllegalCharacter => {
+                write!(f, "scheme contains illegal character")
+            },
+        }
+    }
+}
+
+pub struct Authority {
+    userinfo: Option<String>,
+    host: Option<String>,
+    port: Option<u16>,
+}
+
+pub struct Uri {
+    scheme: Option<String>,
+    authority: Option<Authority>,
+    path: Vec<String>,
+    query: Option<String>,
+    fragment: Option<String>,
+}
+
+impl Uri {
+    fn check_scheme(_scheme: &str) -> Result<&str, Error> {
+        unimplemented!()
+    }
+
+    // TODO: look into making element type more flexible
+    fn decode_element(
+        _element: &str,
+        _allowed_characters: &'static HashSet<char>
+    ) -> Result<String, Error> {
+        unimplemented!()
+    }
+
+    pub fn parse(uri_string: &str) -> Result<Uri, Error> {
+        let (scheme, rest) = Self::parse_scheme(uri_string)?;
+
+        let path_end = rest.find(&['?', '#'][..])
+            .unwrap_or_else(|| rest.len());
+//        let path_end = rest.find(|c| "?#".find(c).is_some())
+//            .unwrap_or(rest.len());
+
+        let authority_and_path_string = &rest[0..path_end];
+        let query_and_or_fragment = &rest[path_end..];
+        let (authority, path) = Self::split_authority_from_path_and_parse_them(authority_and_path_string)?;
+        let (fragment, possible_query) = Self::parse_fragment(query_and_or_fragment)?;
+        let query = Self::parse_query(possible_query)?;
+        Ok(Uri{
+            scheme,
+            authority,
+            path,
+            query,
+            fragment
+        })
+    }
+
+    fn parse_authority(_authority_string: &str) -> Result<Authority, Error> {
+        unimplemented!()
+    }
+
+    fn parse_fragment(_query_and_or_fragment: &str) -> Result<(Option<String>, &str), Error> {
+        unimplemented!()
+    }
+
+    fn parse_path(path_string: &str) -> Result<Vec<String>, Error> {
+        // TODO: improvement: make an iterator and only collect at the end.
+        let mut path = Vec::<String>::new();
+        match path_string {
+            "/" => {
+                // Special case of a path that is empty but needs a single
+                // empty-string element to indicate that it is absolute.
+                path.push("".to_string());
+            },
+
+            "" => {
+            },
+
+            mut path_string => {
+                // TODO: Try out this improvement:
+                // [15:49] silen_z: path_string.split('/').collect()
+                loop {
+                    if let Some(path_delimiter) = path_string.find('/') {
+                        path.push(
+                            path_string[0..path_delimiter].to_string()
+                        );
+                        path_string = &path_string[path_delimiter+1..];
+                    } else {
+                        path.push(path_string.to_string());
+                        break;
+                    }
+                }
+            }
+        }
+        // TODO: improvement
+        // [15:57] silen_z: collect into Result<Vec<_>, Error>
+        for segment in &mut path {
+            let new_segment = Self::decode_element(segment, &PCHAR_NOT_PCT_ENCODED)?;
+            *segment = new_segment;
+        }
+        Ok(path)
+    }
+
+    fn parse_query(_query_and_or_fragment: &str) -> Result<Option<String>, Error> {
+        unimplemented!()
+    }
+
+    fn parse_scheme(uri_string: &str) -> Result<(Option<String>, &str), Error> {
+        // Limit our search so we don't scan into the authority
+        // or path elements, because these may have the colon
+        // character as well, which we might misinterpret
+        // as the scheme delimiter.
+        let authority_or_path_delimiter_start = uri_string.find('/')
+            .unwrap_or_else(|| uri_string.len());
+        if let Some(scheme_end) = &uri_string[0..authority_or_path_delimiter_start].find(':') {
+            let scheme = Self::check_scheme(&uri_string[0..*scheme_end])?
+                .to_lowercase();
+            Ok((Some(scheme), &uri_string[*scheme_end..]))
+        } else {
+            Ok((None, uri_string))
+        }
+    }
+
+    pub fn path(&self) -> &str {
+        ""
+    }
+
+    // TODO:
+    // [17:09] silen_z: as_ref()
+    pub fn scheme(&self) -> &Option<String> {
+        &self.scheme
+    }
+
+    fn split_authority_from_path_and_parse_them(
+        authority_and_path_string: &str
+    ) -> Result<(Option<Authority>, Vec<String>), Error> {
+        // Split authority from path.  If there is an authority, parse it.
+        if &authority_and_path_string[0..2] == "//" {
+            // Strip off authority marker.
+            let authority_and_path_string = &authority_and_path_string[2..];
+
+            // First separate the authority from the path.
+            let authority_end = authority_and_path_string.find('/')
+                .unwrap_or_else(|| authority_and_path_string.len());
+            let authority_string = &authority_and_path_string[0..authority_end];
+            let path_string = &authority_and_path_string[authority_end..];
+
+            // Parse the elements inside the authority string.
+            let authority = Self::parse_authority(authority_string)?;
+            let path = Self::parse_path(path_string)?;
+            Ok((Some(authority), path))
+        } else {
+            let path = Self::parse_path(authority_and_path_string)?;
+            Ok((None, path))
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
 
+    use super::*;
     use std::convert::TryFrom;
 
     #[test]
     fn parse_from_string_no_scheme() {
-        let uri = uriparse::URIReference::try_from("foo/bar");
+        let uri = Uri::parse("foo/bar");
         assert!(uri.is_ok());
         let uri = uri.unwrap();
         assert_eq!(None, uri.scheme());
-
-        // FIXME: Due to what looks like a bug in either uriparse
-        // or the Rust core (so probably uriparse after all), I can't
-        // order the arguments as I would like:
-        //
-        //assert_eq!("foo/bar", uri.path());
-        //
-        // This causes a stack overflow.
-        // https://github.com/sgodwincs/uriparse-rs/issues/14
-        //
-        // So for now, we work around the issue by swapping the two arguments:
+        assert_eq!("foo/bar", uri.path());
         assert_eq!(uri.path(), "foo/bar");
     }
 
