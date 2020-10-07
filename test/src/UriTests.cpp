@@ -767,6 +767,36 @@ TEST(UriTests, IPv6Address) {
     }
 }
 
+TEST(UriTests, IPvFutureAddress) {
+    struct TestVector {
+        std::string uriString;
+        std::string expectedHost;
+        bool isValid;
+    };
+    const std::vector< TestVector > testVectors{
+        // valid
+        {"http://[v1.x]/", "v1.x", true},
+        {"http://[vf.xy]/", "vf.xy", true},
+        {"http://[vf.x:y]/", "vf.x:y", true},
+
+        // invalid
+        {"http://[vx]/", "", false},
+        {"http://[v12]/", "", false},
+        {"http://[v1.?]/", "", false},
+        {"http://[v1.x?]/", "", false},
+    };
+    size_t index = 0;
+    for (const auto& testVector : testVectors) {
+        Uri::Uri uri;
+        const bool parseResult = uri.ParseFromString(testVector.uriString);
+        ASSERT_EQ(testVector.isValid, parseResult) << index;
+        if (parseResult) {
+            ASSERT_EQ(testVector.expectedHost, uri.GetHost());
+        }
+        ++index;
+    }
+}
+
 TEST(UriTests, GenerateString) {
     struct TestVector {
         std::string scheme;
