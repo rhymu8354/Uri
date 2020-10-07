@@ -182,7 +182,7 @@ namespace {
      *     An indication of whether or not the given address
      *     is a valid IPv6 address is returned.
      */
-    bool ValidateIpv4Adress(const std::string& address) {
+    bool ValidateIpv4Address(const std::string& address) {
         size_t numGroups = 0;
         size_t state = 0;
         std::string octetBuffer;
@@ -377,7 +377,7 @@ namespace {
             return false;
         }
         if (ipv4AddressEncountered) {
-            if (!ValidateIpv4Adress(address.substr(potentialIpv4AddressStart))) {
+            if (!ValidateIpv4Address(address.substr(potentialIpv4AddressStart))) {
                 return false;
             }
             numGroups += 2;
