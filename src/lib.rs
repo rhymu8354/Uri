@@ -1090,10 +1090,15 @@ impl Uri {
         self.query = query.map(|q| q.into());
     }
 
-    pub fn set_scheme<T>(&mut self, scheme: Option<T>)
+    pub fn set_scheme<T>(&mut self, scheme: Option<T>) -> Result<(), Error>
         where String: From<T>
     {
-        self.scheme = scheme.map(|s| s.into());
+        let scheme: Option<String> = scheme.map(|s| s.into());
+        if let Some(scheme) = &scheme {
+            Self::check_scheme(scheme)?;
+        }
+        self.scheme = scheme;
+        Ok(())
     }
 
     fn split_authority_from_path_and_parse_them(
@@ -2008,7 +2013,7 @@ mod tests {
         ];
         for test_vector in &test_vectors {
             let mut uri = Uri::default();
-            uri.set_scheme(test_vector.scheme);
+            assert!(uri.set_scheme(test_vector.scheme).is_ok());
             #[allow(unused_parens)]
             if (
                 test_vector.userinfo.is_some()
@@ -2106,6 +2111,22 @@ mod tests {
         let mut uri = Uri::default();
         uri.set_query(Some(&b"foo+bar"[..]));
         assert_eq!(uri.to_string(), "?foo%2Bbar");
+    }
+
+    #[test]
+    fn set_illegal_schemes() {
+        let test_vectors = [
+            "ab_de",
+            "ab/de",
+            "ab:de",
+            "",
+            "&",
+            "foo&bar",
+        ];
+        for test_vector in &test_vectors {
+            let mut uri = Uri::default();
+            assert!(uri.set_scheme(Some(*test_vector)).is_err());
+        }
     }
 
 }
