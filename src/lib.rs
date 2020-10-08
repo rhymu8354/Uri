@@ -190,6 +190,12 @@ impl From<percent_encoded_character_decoder::Error> for Error {
     }
 }
 
+impl From<std::string::FromUtf8Error> for Error {
+    fn from(_: std::string::FromUtf8Error) -> Self {
+        Error::IllegalCharacter
+    }
+}
+
 // TODO: explore possibly returning an iterator instead of a String
 fn encode_element(
     element: &[u8],
@@ -961,6 +967,16 @@ impl Uri {
         &self.path
     }
 
+    #[must_use = "we went through all that trouble to put the path into a string, and you don't want it?"]
+    pub fn path_as_string(&self) -> Result<String, Error> {
+        Ok(
+            String::from_utf8(
+                self.path
+                    .join(&b"/"[..])
+            )?
+        )
+    }
+
     #[must_use = "why did you get the port number and then throw it away?"]
     pub fn port(&self) -> Option<u16> {
         if let Some(authority) = &self.authority {
@@ -1171,6 +1187,9 @@ impl std::fmt::Display for Uri {
     }
 }
 
+// TODO: Numerous tests use `Uri::path` when it would be easier to read if they
+// used `Uri::path_as_string` instead.
+
 #[cfg(test)]
 mod tests {
 
@@ -1182,14 +1201,8 @@ mod tests {
         assert!(uri.is_ok());
         let uri = uri.unwrap();
         assert_eq!(None, uri.scheme());
-        // TODO: needs improvement; I don't like having to spam `to_vec`.
-        // [15:49] kimundi2016: &b""[..] may also work
-        //   Indeed, we could replace `.to_vec()` with `[..]`.
-        //
-        // Maybe we just make a convenience method we could use like this:
-        // assert_eq!("foo/bar", uri.path_as_str());
-        assert_eq!(&[&b"foo"[..], &b"bar"[..]].to_vec(), uri.path());
-        assert_eq!(uri.path(), &[&b"foo"[..], &b"bar"[..]].to_vec());
+        assert_eq!("foo/bar", uri.path_as_string().unwrap());
+        assert_eq!(uri.path_as_string().unwrap(), "foo/bar");
     }
 
     #[test]
