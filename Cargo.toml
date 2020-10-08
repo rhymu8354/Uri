@@ -8,6 +8,3 @@ edition = "2018"
 
 [dependencies]
 lazy_static = "1.4"
-
-[dev-dependencies]
-uriparse = "0.6"
