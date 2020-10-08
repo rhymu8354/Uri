@@ -633,14 +633,8 @@ impl Uri {
     }
 
     fn is_path_absolute(path: &[Vec<u8>]) -> bool {
-        // TODO: Explore this alternate syntax to see if it works.
-        //
-        // match path {
-        //     [segment, ..] if segment.is_empty() => true,
-        //     _ => false
-        // }
-        match path.first() {
-            Some(segment) if segment.is_empty() => true,
+        match path {
+            [segment, ..] if segment.is_empty() => true,
             _ => false
         }
     }
