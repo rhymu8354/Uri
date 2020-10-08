@@ -14,8 +14,6 @@ use std::convert::TryFrom;
 // from the ASCII character set.
 //
 // TODO: improvement
-// [16:16] silen_z: btw char::is_ascii_letter or something like that exists
-//
 // [14:49] silmeth: @rhymu8354 you might want to look at once_cell as a nicer
 // macro-less replacement for lazystatic!()
 lazy_static! {
@@ -927,8 +925,6 @@ impl Uri {
                 }
             }
         }
-        // TODO: improvement
-        // [15:57] silen_z: collect into Result<Vec<_>, Error>
         path_encoded.into_iter().map(
             |segment| {
                 Self::decode_element(&segment, &PCHAR_NOT_PCT_ENCODED)
