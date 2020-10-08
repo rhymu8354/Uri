@@ -233,32 +233,36 @@ fn validate_ipv4_address(address: &str) -> Result<(), Error> {
     // how to remove the redundant code.
     for c in address.chars() {
         state = match state {
+            State::NotInOctet if DIGIT.contains(&c) => {
+                octet_buffer.push(c);
+                State::ExpectDigitOrDot
+            },
+
             State::NotInOctet => {
-                if DIGIT.contains(&c) {
-                    octet_buffer.push(c);
-                    State::ExpectDigitOrDot
-                } else {
+                return Err(Error::IllegalCharacter);
+            },
+
+            State::ExpectDigitOrDot if c == '.' => {
+                num_groups += 1;
+                // TODO: explore combining these two "if" statements or
+                // expressing them in a better way.
+                if num_groups > 4 {
                     return Err(Error::IllegalCharacter);
                 }
+                if octet_buffer.parse::<u8>().is_err() {
+                    return Err(Error::IllegalCharacter);
+                }
+                octet_buffer.clear();
+                State::NotInOctet
+            },
+
+            State::ExpectDigitOrDot if DIGIT.contains(&c) => {
+                octet_buffer.push(c);
+                State::ExpectDigitOrDot
             },
 
             State::ExpectDigitOrDot => {
-                if c == '.' {
-                    num_groups += 1;
-                    if num_groups > 4 {
-                        return Err(Error::IllegalCharacter);
-                    }
-                    if octet_buffer.parse::<u8>().is_err() {
-                        return Err(Error::IllegalCharacter);
-                    }
-                    octet_buffer.clear();
-                    State::NotInOctet
-                } else if DIGIT.contains(&c) {
-                    octet_buffer.push(c);
-                    State::ExpectDigitOrDot
-                } else {
-                    return Err(Error::IllegalCharacter);
-                }
+                return Err(Error::IllegalCharacter);
             },
         };
     }
