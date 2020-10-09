@@ -270,12 +270,8 @@ namespace {
 
                 case ValidationState::COLON_BUT_NO_GROUPS_YET: {
                     if (c == ':') {
-                        if (doubleColonEncountered) {
-                            return false;
-                        } else {
-                            doubleColonEncountered = true;
-                            state = ValidationState::AFTER_DOUBLE_COLON;
-                        }
+                        doubleColonEncountered = true;
+                        state = ValidationState::AFTER_DOUBLE_COLON;
                     } else {
                         return false;
                     }

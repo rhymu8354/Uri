@@ -316,7 +316,7 @@ fn validate_ipv6_address(address: &str) -> Result<(), Error> {
             },
 
             ValidationState::ColonButNoGroupsYet => {
-                if c != ':' || double_colon_encountered {
+                if c != ':' {
                     return Err(Error::IllegalCharacter);
                 }
                 double_colon_encountered = true;
