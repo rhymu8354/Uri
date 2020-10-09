@@ -784,12 +784,9 @@ impl Uri {
 
     pub fn parse(uri_string: &str) -> Result<Uri, Error> {
         let (scheme, rest) = Self::parse_scheme(uri_string)?;
-
-        let path_end = rest.find(&['?', '#'][..])
+        let path_end = rest
+            .find(&['?', '#'][..])
             .unwrap_or_else(|| rest.len());
-//        let path_end = rest.find(|c| "?#".find(c).is_some())
-//            .unwrap_or(rest.len());
-
         let authority_and_path_string = &rest[0..path_end];
         let query_and_or_fragment = &rest[path_end..];
         let (authority, path) = Self::split_authority_from_path_and_parse_them(authority_and_path_string)?;
