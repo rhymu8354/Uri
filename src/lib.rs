@@ -157,6 +157,11 @@ lazy_static! {
 pub enum Error {
     EmptyScheme,
     IllegalCharacter,
+    InvalidDecimalOctet,
+    TooFewAddressParts,
+    TooManyAddressParts,
+    TooManyDigits,
+    TooManyDoubleColons,
     TruncatedHost,
 }
 
@@ -166,13 +171,26 @@ impl std::fmt::Display for Error {
             Error::EmptyScheme => {
                 write!(f, "scheme expected but missing")
             },
-
             Error::IllegalCharacter => {
                 write!(f, "illegal character")
             },
-
             Error::TruncatedHost => {
                 write!(f, "truncated host")
+            },
+            Error::InvalidDecimalOctet => {
+                write!(f, "octet group expected")
+            },
+            Error::TooFewAddressParts => {
+                write!(f, "too few address parts")
+            },
+            Error::TooManyAddressParts => {
+                write!(f, "too many address parts")
+            },
+            Error::TooManyDigits => {
+                write!(f, "too many digits")
+            },
+            Error::TooManyDoubleColons => {
+                write!(f, "too many double-colons")
             },
         }
     }
@@ -223,6 +241,7 @@ fn encode_element(
 
 
 fn validate_ipv4_address(address: &str) -> Result<(), Error> {
+    #[derive(PartialEq)]
     enum State {
         NotInOctet,
         ExpectDigitOrDot,
@@ -253,10 +272,10 @@ fn validate_ipv4_address(address: &str) -> Result<(), Error> {
                 // TODO: explore combining these two "if" statements or
                 // expressing them in a better way.
                 if num_groups > 4 {
-                    return Err(Error::IllegalCharacter);
+                    return Err(Error::TooManyAddressParts);
                 }
                 if octet_buffer.parse::<u8>().is_err() {
-                    return Err(Error::IllegalCharacter);
+                    return Err(Error::InvalidDecimalOctet);
                 }
                 octet_buffer.clear();
                 State::NotInOctet
@@ -272,16 +291,19 @@ fn validate_ipv4_address(address: &str) -> Result<(), Error> {
             },
         };
     }
+    if state == State::NotInOctet {
+        return Err(Error::TruncatedHost);
+    }
     if !octet_buffer.is_empty() {
         num_groups += 1;
         if octet_buffer.parse::<u8>().is_err() {
-            return Err(Error::IllegalCharacter);
+            return Err(Error::InvalidDecimalOctet);
         }
     }
-    if num_groups == 4 {
-        Ok(())
-    } else {
-        Err(Error::IllegalCharacter)
+    match num_groups {
+        4 => Ok(()),
+        n if n < 4 => Err(Error::TooFewAddressParts),
+        _ => Err(Error::TooManyAddressParts),
     }
 }
 
@@ -332,7 +354,7 @@ fn validate_ipv6_address(address: &str) -> Result<(), Error> {
             ValidationState::AfterDoubleColon => {
                 num_digits += 1;
                 if num_digits > 4 {
-                    return Err(Error::IllegalCharacter);
+                    return Err(Error::TooManyDigits);
                 }
                 if DIGIT.contains(&c) {
                     potential_ipv4_address_start = i;
@@ -352,7 +374,7 @@ fn validate_ipv6_address(address: &str) -> Result<(), Error> {
                 } else if HEXDIG.contains(&c) {
                     num_digits += 1;
                     if num_digits > 4 {
-                        return Err(Error::IllegalCharacter);
+                        return Err(Error::TooManyDigits);
                     }
                     ValidationState::InGroupNotIpv4
                 } else {
@@ -371,7 +393,7 @@ fn validate_ipv6_address(address: &str) -> Result<(), Error> {
                 } else {
                     num_digits += 1;
                     if num_digits > 4 {
-                        return Err(Error::IllegalCharacter);
+                        return Err(Error::TooManyDigits);
                     }
                     if DIGIT.contains(&c) {
                         ValidationState::InGroupCouldBeIpv4
@@ -386,7 +408,7 @@ fn validate_ipv6_address(address: &str) -> Result<(), Error> {
             ValidationState::ColonAfterGroup => {
                 if c == ':' {
                     if double_colon_encountered {
-                        return Err(Error::IllegalCharacter);
+                        return Err(Error::TooManyDoubleColons);
                     } else {
                         double_colon_encountered = true;
                         ValidationState::AfterDoubleColon
@@ -417,22 +439,17 @@ fn validate_ipv6_address(address: &str) -> Result<(), Error> {
         (state == ValidationState::ColonButNoGroupsYet)
         || (state == ValidationState::ColonAfterGroup)
     ) { // trailing single colon
-        return Err(Error::IllegalCharacter);
+        return Err(Error::TruncatedHost);
     }
     if ipv4_address_encountered {
         validate_ipv4_address(&address[potential_ipv4_address_start..])?;
         num_groups += 2;
     }
-    let num_groups_correct = if double_colon_encountered {
-        // A double colon matches one or more groups (of 0).
-        num_groups <= 7
-    } else {
-        num_groups == 8
-    };
-    if num_groups_correct {
-        Ok(())
-    } else {
-        Err(Error::IllegalCharacter)
+    match (double_colon_encountered, num_groups) {
+        (true, n) if n <= 7 => Ok(()),
+        (false, 8) => Ok(()),
+        (_, n) if n > 8 => Err(Error::TooManyAddressParts),
+        (_, _) => Err(Error::TooFewAddressParts),
     }
 }
 
@@ -807,6 +824,8 @@ impl Uri {
                 HostParsingState::IpvFutureNumber => {
                     if c == '.' {
                         host_parsing_state = HostParsingState::IpvFutureBody
+                    } else if c == ']' {
+                        return Err(Error::TruncatedHost);
                     } else if !HEXDIG.contains(&c) {
                         return Err(Error::IllegalCharacter);
                     }
@@ -1916,49 +1935,65 @@ mod tests {
     }
 
     #[test]
-    fn ipv6_address() {
+    fn ipv6_address_good() {
         struct TestVector {
             uri_string: &'static str,
-            expected_host: Option<&'static [u8]>
+            expected_host: &'static [u8],
         };
         let test_vectors = [
-            // valid
-            TestVector{ uri_string: "http://[::1]/", expected_host: Some(b"::1") },
-            TestVector{ uri_string: "http://[::ffff:1.2.3.4]/", expected_host: Some(b"::ffff:1.2.3.4") },
-            TestVector{ uri_string: "http://[2001:db8:85a3:8d3:1319:8a2e:370:7348]/", expected_host: Some(b"2001:db8:85a3:8d3:1319:8a2e:370:7348") },
-            TestVector{ uri_string: "http://[fFfF::1]", expected_host: Some(b"fFfF::1") },
-            TestVector{ uri_string: "http://[fFfF:1:2:3:4:5:6:a]", expected_host: Some(b"fFfF:1:2:3:4:5:6:a") },
-
-            // invalid
-            TestVector{ uri_string: "http://[::fFfF::1]", expected_host: None },
-            TestVector{ uri_string: "http://[::ffff:1.2.x.4]/", expected_host: None },
-            TestVector{ uri_string: "http://[::ffff:1.2.3.4.8]/", expected_host: None },
-            TestVector{ uri_string: "http://[::ffff:1.2.3]/", expected_host: None },
-            TestVector{ uri_string: "http://[::ffff:1.2.3.]/", expected_host: None },
-            TestVector{ uri_string: "http://[::ffff:1.2.3.256]/", expected_host: None },
-            TestVector{ uri_string: "http://[::fxff:1.2.3.4]/", expected_host: None },
-            TestVector{ uri_string: "http://[::ffff:1.2.3.-4]/", expected_host: None },
-            TestVector{ uri_string: "http://[::ffff:1.2.3. 4]/", expected_host: None },
-            TestVector{ uri_string: "http://[::ffff:1.2.3.4 ]/", expected_host: None },
-            TestVector{ uri_string: "http://[::ffff:1.2.3.4/", expected_host: None },
-            TestVector{ uri_string: "http://::ffff:1.2.3.4]/", expected_host: None },
-            TestVector{ uri_string: "http://::ffff:a.2.3.4]/", expected_host: None },
-            TestVector{ uri_string: "http://::ffff:1.a.3.4]/", expected_host: None },
-            TestVector{ uri_string: "http://[2001:db8:85a3:8d3:1319:8a2e:370:7348:0000]/", expected_host: None },
-            TestVector{ uri_string: "http://[2001:db8:85a3::8a2e:0:]/", expected_host: None },
-            TestVector{ uri_string: "http://[2001:db8:85a3::8a2e::]/", expected_host: None },
-            TestVector{ uri_string: "http://[]/", expected_host: None },
-            TestVector{ uri_string: "http://[:]/", expected_host: None },
-            TestVector{ uri_string: "http://[v]/", expected_host: None },
+            TestVector{ uri_string: "http://[::1]/", expected_host: b"::1" },
+            TestVector{ uri_string: "http://[::ffff:1.2.3.4]/", expected_host: b"::ffff:1.2.3.4" },
+            TestVector{ uri_string: "http://[2001:db8:85a3:8d3:1319:8a2e:370:7348]/", expected_host: b"2001:db8:85a3:8d3:1319:8a2e:370:7348" },
+            TestVector{ uri_string: "http://[fFfF::1]", expected_host: b"fFfF::1" },
+            TestVector{ uri_string: "http://[1234::1]", expected_host: b"1234::1" },
+            TestVector{ uri_string: "http://[fFfF:1:2:3:4:5:6:a]", expected_host: b"fFfF:1:2:3:4:5:6:a" },
+            TestVector{ uri_string: "http://[2001:db8:85a3::8a2e:0]/", expected_host: b"2001:db8:85a3::8a2e:0" },
+            TestVector{ uri_string: "http://[2001:db8:85a3:8a2e::]/", expected_host: b"2001:db8:85a3:8a2e::" },
         ];
         for test_vector in &test_vectors {
             let uri = Uri::parse(test_vector.uri_string);
-            if let Some(host) = test_vector.expected_host {
-                assert!(uri.is_ok());
-                assert_eq!(Some(host), uri.unwrap().host());
-            } else {
-                assert!(uri.is_err());
-            }
+            assert!(uri.is_ok());
+            assert_eq!(Some(test_vector.expected_host), uri.unwrap().host());
+        }
+    }
+
+    #[test]
+    fn ipv6_address_bad() {
+        struct TestVector {
+            uri_string: &'static str,
+            expected_error: Error,
+        };
+        let test_vectors = [
+            TestVector{ uri_string: "http://[::fFfF::1]", expected_error: Error::TooManyDoubleColons },
+            TestVector{ uri_string: "http://[::ffff:1.2.x.4]/", expected_error: Error::IllegalCharacter },
+            TestVector{ uri_string: "http://[::ffff:1.2.3.4.8]/", expected_error: Error::TooManyAddressParts },
+            TestVector{ uri_string: "http://[::ffff:1.2.3]/", expected_error: Error::TooFewAddressParts },
+            TestVector{ uri_string: "http://[::ffff:1.2.3.]/", expected_error: Error::TruncatedHost },
+            TestVector{ uri_string: "http://[::ffff:1.2.3.256]/", expected_error: Error::InvalidDecimalOctet },
+            TestVector{ uri_string: "http://[::fxff:1.2.3.4]/", expected_error: Error::IllegalCharacter },
+            TestVector{ uri_string: "http://[::ffff:1.2.3.-4]/", expected_error: Error::IllegalCharacter },
+            TestVector{ uri_string: "http://[::ffff:1.2.3. 4]/", expected_error: Error::IllegalCharacter },
+            TestVector{ uri_string: "http://[::ffff:1.2.3.4 ]/", expected_error: Error::IllegalCharacter },
+            TestVector{ uri_string: "http://[::ffff:1.2.3.4/", expected_error: Error::TruncatedHost },
+            TestVector{ uri_string: "http://::ffff:1.2.3.4]/", expected_error: Error::IllegalCharacter },
+            TestVector{ uri_string: "http://::ffff:a.2.3.4]/", expected_error: Error::IllegalCharacter },
+            TestVector{ uri_string: "http://::ffff:1.a.3.4]/", expected_error: Error::IllegalCharacter },
+            TestVector{ uri_string: "http://[2001:db8:85a3:8d3:1319:8a2e:370:7348:0000]/", expected_error: Error::TooManyAddressParts },
+            TestVector{ uri_string: "http://[2001:db8:85a3:8d3:1319:8a2e:370:7348::1]/", expected_error: Error::TooManyAddressParts },
+            TestVector{ uri_string: "http://[2001:db8:85a3::8a2e:0:]/", expected_error: Error::TruncatedHost },
+            TestVector{ uri_string: "http://[2001:db8:85a3::8a2e::]/", expected_error: Error::TooManyDoubleColons },
+            TestVector{ uri_string: "http://[]/", expected_error: Error::TooFewAddressParts },
+            TestVector{ uri_string: "http://[:]/", expected_error: Error::TruncatedHost },
+            TestVector{ uri_string: "http://[v]/", expected_error: Error::TruncatedHost },
+        ];
+        for test_vector in &test_vectors {
+            let uri = Uri::parse(test_vector.uri_string);
+            assert_eq!(
+                test_vector.expected_error,
+                uri.unwrap_err(),
+                "{}",
+                test_vector.uri_string
+            );
         }
     }
 
