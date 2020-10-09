@@ -733,6 +733,7 @@ TEST(UriTests, IPv6Address) {
         {"http://[fFfF::1]", "fFfF::1", true},
         {"http://[1234::1]", "1234::1", true},
         {"http://[fFfF:1:2:3:4:5:6:a]", "fFfF:1:2:3:4:5:6:a", true},
+        {"http://[2001:db8:85a3::8a2e:0]/", "2001:db8:85a3::8a2e:0", true},
         {"http://[2001:db8:85a3:8a2e::]/", "2001:db8:85a3:8a2e::", true},
 
         // invalid
@@ -751,6 +752,7 @@ TEST(UriTests, IPv6Address) {
         {"http://::ffff:a.2.3.4]/", "", false},
         {"http://::ffff:1.a.3.4]/", "", false},
         {"http://[2001:db8:85a3:8d3:1319:8a2e:370:7348:0000]/", "", false},
+        {"http://[2001:db8:85a3:8d3:1319:8a2e:370:7348::1]/", "", false},
         {"http://[2001:db8:85a3::8a2e:0:]/", "", false},
         {"http://[2001:db8:85a3::8a2e::]/", "", false},
         {"http://[]/", "", false},
