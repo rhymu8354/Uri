@@ -316,7 +316,7 @@ namespace {
                     if (c == ':') {
                         numDigits = 0;
                         ++numGroups;
-                        state = ValidationState::AFTER_COLON_EXPECT_GROUP_OR_IPV4;
+                        state = ValidationState::COLON_AFTER_GROUP;
                     } else if (c == '.') {
                         ipv4AddressEncountered = true;
                         break;

@@ -358,7 +358,7 @@ fn validate_ipv6_address(address: &str) -> Result<(), Error> {
                 if c == ':' {
                     num_digits = 0;
                     num_groups += 1;
-                    ValidationState::AfterColonExpectGroupOrIpv4
+                    ValidationState::ColonAfterGroup
                 } else if c == '.' {
                     ipv4_address_encountered = true;
                     break;
