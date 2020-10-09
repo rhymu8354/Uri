@@ -480,8 +480,6 @@ impl std::fmt::Display for Authority {
             write!(f, "{}@", encode_element(&userinfo, &USER_INFO_NOT_PCT_ENCODED))?;
         }
         let host_as_string = String::from_utf8(self.host.clone());
-        // NOTE: explore how to rewrite this so as not to have the redundant
-        // formatting of the host as not a valid IPv6 address
         match host_as_string {
             Ok(host_as_string) if validate_ipv6_address(&host_as_string).is_ok() => {
                 write!(f, "[{}]", host_as_string.to_ascii_lowercase())?;
@@ -541,14 +539,6 @@ impl Uri {
     }
 
     fn can_navigate_path_up_one_level(path: &[Vec<u8>]) -> bool {
-        // TODO: See if we can leverage is_path_absolute here.
-        //
-        // Something close, but we need to call `path.first` twice:
-        // if Self::is_path_absolute(path) {
-        //     path.len() > 1
-        // } else {
-        //     path.first().is_some()
-        // }
         match path.first() {
             // First segment empty means path has leading slash,
             // so we can only navigate up if there are two or more segments.
