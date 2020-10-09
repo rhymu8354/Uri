@@ -287,7 +287,7 @@ fn validate_ipv6_address(address: &str) -> Result<(), Error> {
     enum ValidationState {
         NoGroupsYet,
         ColonButNoGroupsYet,
-        AfterColonExpectGroupOrIpv4,
+        AfterDoubleColon,
         InGroupNotIpv4,
         InGroupCouldBeIpv4,
         ColonAfterGroup,
@@ -320,10 +320,10 @@ fn validate_ipv6_address(address: &str) -> Result<(), Error> {
                     return Err(Error::IllegalCharacter);
                 }
                 double_colon_encountered = true;
-                ValidationState::AfterColonExpectGroupOrIpv4
+                ValidationState::AfterDoubleColon
             },
 
-            ValidationState::AfterColonExpectGroupOrIpv4 => {
+            ValidationState::AfterDoubleColon => {
                 num_digits += 1;
                 if num_digits > 4 {
                     return Err(Error::IllegalCharacter);
@@ -383,7 +383,7 @@ fn validate_ipv6_address(address: &str) -> Result<(), Error> {
                         return Err(Error::IllegalCharacter);
                     } else {
                         double_colon_encountered = true;
-                        ValidationState::AfterColonExpectGroupOrIpv4
+                        ValidationState::AfterDoubleColon
                     }
                 } else if DIGIT.contains(&c) {
                     potential_ipv4_address_start = i;

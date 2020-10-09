@@ -240,7 +240,7 @@ namespace {
         enum class ValidationState {
             NO_GROUPS_YET,
             COLON_BUT_NO_GROUPS_YET,
-            AFTER_COLON_EXPECT_GROUP_OR_IPV4,
+            AFTER_DOUBLE_COLON,
             IN_GROUP_NOT_IPV4,
             IN_GROUP_COULD_BE_IPV4,
             COLON_AFTER_GROUP,
@@ -274,14 +274,14 @@ namespace {
                             return false;
                         } else {
                             doubleColonEncountered = true;
-                            state = ValidationState::AFTER_COLON_EXPECT_GROUP_OR_IPV4;
+                            state = ValidationState::AFTER_DOUBLE_COLON;
                         }
                     } else {
                         return false;
                     }
                 } break;
 
-                case ValidationState::AFTER_COLON_EXPECT_GROUP_OR_IPV4: {
+                case ValidationState::AFTER_DOUBLE_COLON: {
                     if (DIGIT.Contains(c)) {
                         potentialIpv4AddressStart = position;
                         if (++numDigits > 4) {
@@ -340,7 +340,7 @@ namespace {
                             return false;
                         } else {
                             doubleColonEncountered = true;
-                            state = ValidationState::AFTER_COLON_EXPECT_GROUP_OR_IPV4;
+                            state = ValidationState::AFTER_DOUBLE_COLON;
                         }
                     } else if (DIGIT.Contains(c)) {
                         potentialIpv4AddressStart = position;
