@@ -733,6 +733,7 @@ TEST(UriTests, IPv6Address) {
         {"http://[fFfF::1]", "fFfF::1", true},
         {"http://[1234::1]", "1234::1", true},
         {"http://[fFfF:1:2:3:4:5:6:a]", "fFfF:1:2:3:4:5:6:a", true},
+        {"http://[2001:db8:85a3:8a2e::]/", "2001:db8:85a3:8a2e::", true},
 
         // invalid
         {"http://[::fFfF::1]", "", false},

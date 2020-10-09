@@ -370,7 +370,6 @@ namespace {
             (position == address.length())
             && (
                 (state == ValidationState::COLON_BUT_NO_GROUPS_YET)
-                || (state == ValidationState::AFTER_COLON_EXPECT_GROUP_OR_IPV4)
                 || (state == ValidationState::COLON_AFTER_GROUP)
             )
         ) { // trailing single colon

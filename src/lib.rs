@@ -409,7 +409,6 @@ fn validate_ipv6_address(address: &str) -> Result<(), Error> {
     #[allow(unused_parens)]
     if (
         (state == ValidationState::ColonButNoGroupsYet)
-        || (state == ValidationState::AfterColonExpectGroupOrIpv4)
         || (state == ValidationState::ColonAfterGroup)
     ) { // trailing single colon
         return Err(Error::IllegalCharacter);
