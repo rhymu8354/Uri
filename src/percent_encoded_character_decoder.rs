@@ -44,6 +44,12 @@ impl std::fmt::Display for Error {
     }
 }
 
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        None
+    }
+}
+
 pub struct PercentEncodedCharacterDecoder {
     decoded_character: u8,
     digits_left: usize,
