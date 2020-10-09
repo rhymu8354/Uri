@@ -200,86 +200,40 @@ impl std::fmt::Display for Context {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, thiserror::Error, PartialEq)]
 pub enum Error {
-    CannotExpressAsUtf8(std::string::FromUtf8Error),
+    #[error("URI contains non-UTF8 sequences")]
+    CannotExpressAsUtf8(#[from] std::string::FromUtf8Error),
+
+    #[error("scheme expected but missing")]
     EmptyScheme,
+
+    #[error("illegal character in {0}")]
     IllegalCharacter(Context),
-    IllegalPercentEncoding(percent_encoded_character_decoder::Error),
-    IllegalPortNumber(std::num::ParseIntError),
+
+    #[error("illegal percent encoding")]
+    IllegalPercentEncoding(#[from] percent_encoded_character_decoder::Error),
+
+    #[error("illegal port number")]
+    IllegalPortNumber(#[source] std::num::ParseIntError),
+
+    #[error("octet group expected")]
     InvalidDecimalOctet,
+
+    #[error("too few address parts")]
     TooFewAddressParts,
+
+    #[error("too many address parts")]
     TooManyAddressParts,
+
+    #[error("too many digits in IPv6 address part")]
     TooManyDigits,
+
+    #[error("too many double-colons in IPv6 address")]
     TooManyDoubleColons,
+
+    #[error("truncated host")]
     TruncatedHost,
-}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Error::CannotExpressAsUtf8(_) => {
-                write!(f, "URI contains non-UTF8 sequences")
-            },
-            Error::EmptyScheme => {
-                write!(f, "scheme expected but missing")
-            },
-            Error::IllegalCharacter(context) => {
-                write!(f, "illegal character in {}", context)
-            },
-            Error::IllegalPercentEncoding(_) => {
-                write!(f, "illegal percent encoding")
-            },
-            Error::IllegalPortNumber(_) => {
-                write!(f, "illegal port number")
-            }
-            Error::TruncatedHost => {
-                write!(f, "truncated host")
-            },
-            Error::InvalidDecimalOctet => {
-                write!(f, "octet group expected")
-            },
-            Error::TooFewAddressParts => {
-                write!(f, "too few address parts")
-            },
-            Error::TooManyAddressParts => {
-                write!(f, "too many address parts")
-            },
-            Error::TooManyDigits => {
-                write!(f, "too many digits")
-            },
-            Error::TooManyDoubleColons => {
-                write!(f, "too many double-colons")
-            },
-        }
-    }
-}
-
-impl std::error::Error for Error {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Error::CannotExpressAsUtf8(source) => Some(source),
-            Error::IllegalPercentEncoding(source) => Some(source),
-            Error::IllegalPortNumber(source) => Some(source),
-            _ => None,
-        }
-    }
-}
-
-impl From<percent_encoded_character_decoder::Error> for Error {
-    fn from(error: percent_encoded_character_decoder::Error) -> Self {
-        match error {
-            percent_encoded_character_decoder::Error::IllegalCharacter => {
-                Error::IllegalPercentEncoding(error)
-            },
-        }
-    }
-}
-
-impl From<std::string::FromUtf8Error> for Error {
-    fn from(error: std::string::FromUtf8Error) -> Self {
-        Error::CannotExpressAsUtf8(error)
-    }
 }
 
 // TODO: explore possibly returning an iterator instead of a String

@@ -29,25 +29,10 @@ lazy_static! {
 // TODO: Learn about using thiserror to define library errors
 // [14:05] ABuffSeagull: You should use https://lib.rs/crates/thiserror for the errors
 // [14:07] 715209: i also recommend thiserror
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, thiserror::Error, PartialEq)]
 pub enum Error {
+    #[error("illegal character")]
     IllegalCharacter,
-}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Error::IllegalCharacter => {
-                write!(f, "illegal character")
-            },
-        }
-    }
-}
-
-impl std::error::Error for Error {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        None
-    }
 }
 
 pub struct PercentEncodedCharacterDecoder {
