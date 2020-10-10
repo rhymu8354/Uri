@@ -8,4 +8,5 @@ edition = "2018"
 
 [dependencies]
 lazy_static = "1.4"
+named_tuple = "0.1"
 thiserror = "1.0"

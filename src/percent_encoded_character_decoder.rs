@@ -26,9 +26,6 @@ lazy_static! {
         .collect();
 }
 
-// TODO: Learn about using thiserror to define library errors
-// [14:05] ABuffSeagull: You should use https://lib.rs/crates/thiserror for the errors
-// [14:07] 715209: i also recommend thiserror
 #[derive(Debug, Clone, thiserror::Error, PartialEq)]
 pub enum Error {
     #[error("illegal character")]
@@ -91,31 +88,28 @@ mod tests {
 
     #[test]
     fn good_sequences() {
-
-        // TODO: consider named tuples instead
-        //
-        // [14:07] LeinardoSmith: Looks like there is a macro for named tuples:
-        // https://docs.rs/named_tuple/0.1.3/named_tuple/
-        struct TestVector {
-            sequence: [char; 2],
-            expected_output: u8,
-        }
-        let test_vectors = [
-            TestVector{sequence: ['4', '1'], expected_output: b'A'},
-            TestVector{sequence: ['5', 'A'], expected_output: b'Z'},
-            TestVector{sequence: ['6', 'e'], expected_output: b'n'},
-            TestVector{sequence: ['e', '1'], expected_output: b'\xe1'},
-            TestVector{sequence: ['C', 'A'], expected_output: b'\xca'},
+        named_tuple!(
+            struct TestVector {
+                sequence: [char; 2],
+                expected_output: u8,
+            }
+        );
+        let test_vectors: [TestVector; 5] = [
+            (['4', '1'], b'A').into(),
+            (['5', 'A'], b'Z').into(),
+            (['6', 'e'], b'n').into(),
+            (['e', '1'], b'\xe1').into(),
+            (['C', 'A'], b'\xca').into(),
         ];
         for test_vector in &test_vectors {
             let mut pec = PercentEncodedCharacterDecoder::new();
             assert_eq!(
                 Ok(None),
-                pec.next(test_vector.sequence[0])
+                pec.next(test_vector.sequence()[0])
             );
             assert_eq!(
-                Ok(Some(test_vector.expected_output)),
-                pec.next(test_vector.sequence[1])
+                Ok(Some(*test_vector.expected_output())),
+                pec.next(test_vector.sequence()[1])
             );
         }
     }

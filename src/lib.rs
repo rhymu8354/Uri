@@ -4,6 +4,10 @@
 #[macro_use]
 extern crate lazy_static;
 
+#[cfg(test)]
+#[macro_use]
+extern crate named_tuple;
+
 mod percent_encoded_character_decoder;
 use percent_encoded_character_decoder::PercentEncodedCharacterDecoder;
 
@@ -1269,21 +1273,23 @@ mod tests {
 
     #[test]
     fn parse_from_string_path_corner_cases() {
-        struct TestVector<'a> {
-            path_in: &'static str,
-            path_out: &'a [&'static [u8]],
-        };
-        let test_vectors = [
-            TestVector{path_in: "", path_out: &[]},
-            TestVector{path_in: "/", path_out: &[&b""[..]]},
-            TestVector{path_in: "/foo", path_out: &[&b""[..], &b"foo"[..]]},
-            TestVector{path_in: "foo/", path_out: &[&b"foo"[..], &b""[..]]},
+        named_tuple!(
+            struct TestVector {
+                path_in: &'static str,
+                path_out: Vec<&'static [u8]>,
+            }
+        );
+        let test_vectors: [TestVector; 4] = [
+            ("", vec![]).into(),
+            ("/", vec![&b""[..]]).into(),
+            ("/foo", vec![&b""[..], &b"foo"[..]]).into(),
+            ("foo/", vec![&b"foo"[..], &b""[..]]).into(),
         ];
         for test_vector in &test_vectors {
-            let uri = Uri::parse(test_vector.path_in);
+            let uri = Uri::parse(test_vector.path_in());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
-            assert_eq!(uri.path(), &test_vector.path_out);
+            assert_eq!(uri.path(), test_vector.path_out());
         }
     }
 
@@ -1355,49 +1361,54 @@ mod tests {
 
     #[test]
     fn parse_from_string_relative_vs_non_relative_references() {
-        struct TestVector {
-            uri_string: &'static str,
-            is_relative_reference: bool
-        };
-        let test_vectors = [
-            TestVector{ uri_string: "http://www.example.com/", is_relative_reference: false },
-            TestVector{ uri_string: "http://www.example.com", is_relative_reference: false },
-            TestVector{ uri_string: "/", is_relative_reference: true },
-            TestVector{ uri_string: "foo", is_relative_reference: true },
+        named_tuple!(
+            struct TestVector {
+                uri_string: &'static str,
+                is_relative_reference: bool
+            }
+        );
+        let test_vectors: [TestVector; 4] = [
+            ("http://www.example.com/", false).into(),
+            ("http://www.example.com", false).into(),
+            ("/", true).into(),
+            ("foo", true).into(),
         ];
         for test_vector in &test_vectors {
-            let uri = Uri::parse(test_vector.uri_string);
+            let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
-            assert_eq!(test_vector.is_relative_reference, uri.is_relative_reference());
+            assert_eq!(
+                *test_vector.is_relative_reference(),
+                uri.is_relative_reference()
+            );
         }
     }
 
     #[test]
     fn parse_from_string_relative_vs_non_relative_paths() {
-        struct TestVector {
-            uri_string: &'static str,
-            contains_relative_path: bool
-        };
-        let test_vectors = [
-            TestVector{ uri_string: "http://www.example.com/", contains_relative_path: false },
-            TestVector{ uri_string: "http://www.example.com", contains_relative_path: false },
-            TestVector{ uri_string: "/", contains_relative_path: false },
-            TestVector{ uri_string: "foo", contains_relative_path: true },
+        named_tuple!(
+            struct TestVector {
+                uri_string: &'static str,
+                contains_relative_path: bool
+            }
+        );
+        let test_vectors: [TestVector; 5] = [
+            ("http://www.example.com/", false).into(),
+            ("http://www.example.com", false).into(),
+            ("/", false).into(),
+            ("foo", true).into(),
 
-            /*
-             * This is only a valid test vector if we understand
-             * correctly that an empty string IS a valid
-             * "relative reference" URI with an empty path.
-             */
-             TestVector{ uri_string: "", contains_relative_path: true },
+            // This is only a valid test vector if we understand
+            // correctly that an empty string IS a valid
+            // "relative reference" URI with an empty path.
+            ("", true).into(),
         ];
         for (test_index, test_vector) in test_vectors.iter().enumerate() {
-            let uri = Uri::parse(test_vector.uri_string);
+            let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
             assert_eq!(
-                test_vector.contains_relative_path,
+                *test_vector.contains_relative_path(),
                 uri.contains_relative_path(),
                 "{}", test_index
             );
@@ -1406,55 +1417,59 @@ mod tests {
 
     #[test]
     fn parse_from_string_query_and_fragment_elements() {
-        struct TestVector {
-            uri_string: &'static str,
-            host: &'static [u8],
-            query: Option<&'static [u8]>,
-            fragment: Option<&'static [u8]>
-        };
-        let test_vectors = [
-            TestVector{ uri_string: "http://www.example.com/", host: b"www.example.com", query: None, fragment: None },
-            TestVector{ uri_string: "http://example.com?foo", host: b"example.com", query: Some(b"foo"), fragment: None },
-            TestVector{ uri_string: "http://www.example.com#foo", host: b"www.example.com", query: None, fragment: Some(b"foo") },
-            TestVector{ uri_string: "http://www.example.com?foo#bar", host: b"www.example.com", query: Some(b"foo"), fragment: Some(b"bar") },
-            TestVector{ uri_string: "http://www.example.com?earth?day#bar", host: b"www.example.com", query: Some(b"earth?day"), fragment: Some(b"bar") },
-            TestVector{ uri_string: "http://www.example.com/spam?foo#bar", host: b"www.example.com", query: Some(b"foo"), fragment: Some(b"bar" )},
-            TestVector{ uri_string: "http://www.example.com/?", host: b"www.example.com", query: Some(b""), fragment: None },
+        named_tuple!(
+            struct TestVector {
+                uri_string: &'static str,
+                host: &'static [u8],
+                query: Option<&'static [u8]>,
+                fragment: Option<&'static [u8]>
+            }
+        );
+        let test_vectors: [TestVector; 7] = [
+            ("http://www.example.com/", &b"www.example.com"[..], None, None).into(),
+            ("http://example.com?foo", &b"example.com"[..], Some(&b"foo"[..]), None).into(),
+            ("http://www.example.com#foo", &b"www.example.com"[..], None, Some(&b"foo"[..])).into(),
+            ("http://www.example.com?foo#bar", &b"www.example.com"[..], Some(&b"foo"[..]), Some(&b"bar"[..])).into(),
+            ("http://www.example.com?earth?day#bar", &b"www.example.com"[..], Some(&b"earth?day"[..]), Some(&b"bar"[..])).into(),
+            ("http://www.example.com/spam?foo#bar", &b"www.example.com"[..], Some(&b"foo"[..]), Some(&b"bar"[..])).into(),
+            ("http://www.example.com/?", &b"www.example.com"[..], Some(&b""[..]), None).into(),
         ];
         for (test_index, test_vector) in test_vectors.iter().enumerate() {
-            let uri = Uri::parse(test_vector.uri_string);
+            let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
-            assert_eq!(Some(test_vector.host), uri.host());
+            assert_eq!(Some(*test_vector.host()), uri.host());
             assert_eq!(
-                test_vector.query,
+                *test_vector.query(),
                 uri.query(),
                 "{}", test_index
             );
-            assert_eq!(test_vector.fragment, uri.fragment());
+            assert_eq!(*test_vector.fragment(), uri.fragment());
         }
     }
 
     #[test]
     fn parse_from_string_user_info() {
-        struct TestVector {
-            uri_string: &'static str,
-            userinfo: Option<&'static [u8]>,
-        };
-        let test_vectors = [
-            TestVector{ uri_string: "http://www.example.com/", userinfo: None },
-            TestVector{ uri_string: "http://joe@www.example.com", userinfo: Some(b"joe")},
-            TestVector{ uri_string: "http://pepe:feelsbadman@www.example.com", userinfo: Some(b"pepe:feelsbadman") },
-            TestVector{ uri_string: "//www.example.com", userinfo: None },
-            TestVector{ uri_string: "//bob@www.example.com", userinfo: Some(b"bob") },
-            TestVector{ uri_string: "/", userinfo: None },
-            TestVector{ uri_string: "foo", userinfo: None },
+        named_tuple!(
+            struct TestVector {
+                uri_string: &'static str,
+                userinfo: Option<&'static [u8]>,
+            }
+        );
+        let test_vectors: [TestVector; 7] = [
+            ("http://www.example.com/", None).into(),
+            ("http://joe@www.example.com", Some(&b"joe"[..])).into(),
+            ("http://pepe:feelsbadman@www.example.com", Some(&b"pepe:feelsbadman"[..])).into(),
+            ("//www.example.com", None).into(),
+            ("//bob@www.example.com", Some(&b"bob"[..])).into(),
+            ("/", None).into(),
+            ("foo", None).into(),
         ];
         for test_vector in &test_vectors {
-            let uri = Uri::parse(test_vector.uri_string);
+            let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
-            assert_eq!(test_vector.userinfo, uri.userinfo());
+            assert_eq!(*test_vector.userinfo(), uri.userinfo());
         }
     }
 
@@ -1486,23 +1501,25 @@ mod tests {
 
     #[test]
     fn parse_from_string_scheme_barely_legal() {
-        struct TestVector {
-            uri_string: &'static str,
-            scheme: &'static str
-        };
-        let test_vectors = [
-            TestVector{ uri_string: "h://www.example.com/", scheme: "h" },
-            TestVector{ uri_string: "x+://www.example.com/", scheme: "x+" },
-            TestVector{ uri_string: "y-://www.example.com/", scheme: "y-" },
-            TestVector{ uri_string: "z.://www.example.com/", scheme: "z." },
-            TestVector{ uri_string: "aa://www.example.com/", scheme: "aa" },
-            TestVector{ uri_string: "a0://www.example.com/", scheme: "a0" },
+        named_tuple!(
+            struct TestVector {
+                uri_string: &'static str,
+                scheme: &'static str
+            }
+        );
+        let test_vectors: [TestVector; 6] = [
+            ("h://www.example.com/", "h").into(),
+            ("x+://www.example.com/", "x+").into(),
+            ("y-://www.example.com/", "y-").into(),
+            ("z.://www.example.com/", "z.").into(),
+            ("aa://www.example.com/", "aa").into(),
+            ("a0://www.example.com/", "a0").into(),
         ];
         for test_vector in &test_vectors {
-            let uri = Uri::parse(test_vector.uri_string);
+            let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
-            assert_eq!(Some(test_vector.scheme), uri.scheme());
+            assert_eq!(Some(*test_vector.scheme()), uri.scheme());
         }
     }
 
@@ -1537,24 +1554,26 @@ mod tests {
 
     #[test]
     fn parse_from_string_user_info_barely_legal() {
-        struct TestVector {
-            uri_string: &'static str,
-            userinfo: &'static [u8]
-        };
-        let test_vectors = [
-            TestVector{ uri_string: "//%41@www.example.com/", userinfo: b"A" },
-            TestVector{ uri_string: "//@www.example.com/", userinfo: b"" },
-            TestVector{ uri_string: "//!@www.example.com/", userinfo: b"!" },
-            TestVector{ uri_string: "//'@www.example.com/", userinfo: b"'" },
-            TestVector{ uri_string: "//(@www.example.com/", userinfo: b"(" },
-            TestVector{ uri_string: "//;@www.example.com/", userinfo: b";" },
-            TestVector{ uri_string: "http://:@www.example.com/", userinfo: b":" },
+        named_tuple!(
+            struct TestVector {
+                uri_string: &'static str,
+                userinfo: &'static [u8]
+            }
+        );
+        let test_vectors: [TestVector; 7] = [
+            ("//%41@www.example.com/", &b"A"[..]).into(),
+            ("//@www.example.com/", &b""[..]).into(),
+            ("//!@www.example.com/", &b"!"[..]).into(),
+            ("//'@www.example.com/", &b"'"[..]).into(),
+            ("//(@www.example.com/", &b"("[..]).into(),
+            ("//;@www.example.com/", &b";"[..]).into(),
+            ("http://:@www.example.com/", &b":"[..]).into(),
         ];
         for test_vector in &test_vectors {
-            let uri = Uri::parse(test_vector.uri_string);
+            let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
-            assert_eq!(Some(test_vector.userinfo), uri.userinfo());
+            assert_eq!(Some(*test_vector.userinfo()), uri.userinfo());
         }
     }
 
@@ -1573,26 +1592,28 @@ mod tests {
 
     #[test]
     fn parse_from_string_host_barely_legal() {
-        struct TestVector {
-            uri_string: &'static str,
-            host: &'static [u8]
-        };
-        let test_vectors = [
-            TestVector{ uri_string: "//%41/", host: b"a" },
-            TestVector{ uri_string: "///", host: b"" },
-            TestVector{ uri_string: "//!/", host: b"!" },
-            TestVector{ uri_string: "//'/", host: b"'" },
-            TestVector{ uri_string: "//(/", host: b"(" },
-            TestVector{ uri_string: "//;/", host: b";" },
-            TestVector{ uri_string: "//1.2.3.4/", host: b"1.2.3.4" },
-            TestVector{ uri_string: "//[v7.:]/", host: b"v7.:" },
-            TestVector{ uri_string: "//[v7.aB]/", host: b"v7.aB" },
+        named_tuple!(
+            struct TestVector {
+                uri_string: &'static str,
+                host: &'static [u8]
+            }
+        );
+        let test_vectors: [TestVector; 9] = [
+            ("//%41/", &b"a"[..]).into(),
+            ("///", &b""[..]).into(),
+            ("//!/", &b"!"[..]).into(),
+            ("//'/", &b"'"[..]).into(),
+            ("//(/", &b"("[..]).into(),
+            ("//;/", &b";"[..]).into(),
+            ("//1.2.3.4/", &b"1.2.3.4"[..]).into(),
+            ("//[v7.:]/", &b"v7.:"[..]).into(),
+            ("//[v7.aB]/", &b"v7.aB"[..]).into(),
         ];
         for test_vector in &test_vectors {
-            let uri = Uri::parse(test_vector.uri_string);
+            let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
-            assert_eq!(Some(test_vector.host), uri.host());
+            assert_eq!(Some(*test_vector.host()), uri.host());
         }
     }
 
@@ -1672,23 +1693,25 @@ mod tests {
 
     #[test]
     fn parse_from_string_path_barely_legal() {
-        struct TestVector<'a> {
-            uri_string: &'static str,
-            path: &'a [&'static [u8]]
-        };
-        let test_vectors = [
-            TestVector{ uri_string: "/:/foo", path: &[&b""[..], &b":"[..], &b"foo"[..]] },
-            TestVector{ uri_string: "bob@/foo", path: &[&b"bob@"[..], &b"foo"[..]] },
-            TestVector{ uri_string: "hello!", path: &[&b"hello!"[..]] },
-            TestVector{ uri_string: "urn:hello,%20w%6Frld", path: &[&b"hello, world"[..]] },
-            TestVector{ uri_string: "//example.com/foo/(bar)/", path: &[&b""[..], &b"foo"[..], &b"(bar)"[..], &b""[..]] },
+        named_tuple!(
+            struct TestVector {
+                uri_string: &'static str,
+                path: Vec<&'static [u8]>
+            }
+        );
+        let test_vectors: [TestVector; 5] = [
+            ("/:/foo", vec![&b""[..], &b":"[..], &b"foo"[..]]).into(),
+            ("bob@/foo", vec![&b"bob@"[..], &b"foo"[..]]).into(),
+            ("hello!", vec![&b"hello!"[..]]).into(),
+            ("urn:hello,%20w%6Frld", vec![&b"hello, world"[..]]).into(),
+            ("//example.com/foo/(bar)/", vec![&b""[..], &b"foo"[..], &b"(bar)"[..], &b""[..]]).into(),
         ];
         for test_vector in &test_vectors {
-            let uri = Uri::parse(test_vector.uri_string);
+            let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
             let path = uri.path().clone();
-            assert_eq!(test_vector.path, path);
+            assert_eq!(*test_vector.path(), path);
         }
     }
 
@@ -1724,24 +1747,26 @@ mod tests {
 
     #[test]
     fn parse_from_string_query_barely_legal() {
-        struct TestVector {
-            uri_string: &'static str,
-            query: &'static [u8]
-        };
-        let test_vectors = [
-            TestVector{ uri_string: "/?:/foo", query: b":/foo" },
-            TestVector{ uri_string: "?bob@/foo", query: b"bob@/foo" },
-            TestVector{ uri_string: "?hello!", query: b"hello!" },
-            TestVector{ uri_string: "urn:?hello,%20w%6Frld", query: b"hello, world" },
-            TestVector{ uri_string: "//example.com/foo?(bar)/", query: b"(bar)/" },
-            TestVector{ uri_string: "http://www.example.com/?foo?bar", query: b"foo?bar" },
+        named_tuple!(
+            struct TestVector {
+                uri_string: &'static str,
+                query: &'static [u8]
+            }
+        );
+        let test_vectors: [TestVector; 6] = [
+            ("/?:/foo", &b":/foo"[..]).into(),
+            ("?bob@/foo", &b"bob@/foo"[..]).into(),
+            ("?hello!", &b"hello!"[..]).into(),
+            ("urn:?hello,%20w%6Frld", &b"hello, world"[..]).into(),
+            ("//example.com/foo?(bar)/", &b"(bar)/"[..]).into(),
+            ("http://www.example.com/?foo?bar", &b"foo?bar"[..]).into(),
         ];
         for (test_index, test_vector) in test_vectors.iter().enumerate() {
-            let uri = Uri::parse(test_vector.uri_string);
+            let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
             assert_eq!(
-                Some(test_vector.query),
+                Some(*test_vector.query()),
                 uri.query(),
                 "{}", test_index
             );
@@ -1780,49 +1805,53 @@ mod tests {
 
     #[test]
     fn parse_from_string_fragment_barely_legal() {
-        struct TestVector {
-            uri_string: &'static str,
-            fragment: &'static [u8]
-        };
-        let test_vectors = [
-            TestVector{ uri_string: "/#:/foo", fragment: b":/foo" },
-            TestVector{ uri_string: "#bob@/foo", fragment: b"bob@/foo" },
-            TestVector{ uri_string: "#hello!", fragment: b"hello!" },
-            TestVector{ uri_string: "urn:#hello,%20w%6Frld", fragment: b"hello, world" },
-            TestVector{ uri_string: "//example.com/foo#(bar)/", fragment: b"(bar)/" },
-            TestVector{ uri_string: "http://www.example.com/#foo?bar", fragment: b"foo?bar" },
+        named_tuple!(
+            struct TestVector {
+                uri_string: &'static str,
+                fragment: &'static [u8]
+            }
+        );
+        let test_vectors: [TestVector; 6] = [
+            ("/#:/foo", &b":/foo"[..]).into(),
+            ("#bob@/foo", &b"bob@/foo"[..]).into(),
+            ("#hello!", &b"hello!"[..]).into(),
+            ("urn:#hello,%20w%6Frld", &b"hello, world"[..]).into(),
+            ("//example.com/foo#(bar)/", &b"(bar)/"[..]).into(),
+            ("http://www.example.com/#foo?bar", &b"foo?bar"[..]).into(),
         ];
         for test_vector in &test_vectors {
-            let uri = Uri::parse(test_vector.uri_string);
+            let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
-            assert_eq!(Some(test_vector.fragment), uri.fragment());
+            assert_eq!(Some(*test_vector.fragment()), uri.fragment());
         }
     }
 
     #[test]
     fn parse_from_string_paths_with_percent_encoded_characters() {
-        struct TestVector {
-            uri_string: &'static str,
-            path_first_segment: &'static [u8]
-        };
-        let test_vectors = [
-            TestVector{ uri_string: "%41", path_first_segment: b"A" },
-            TestVector{ uri_string: "%4A", path_first_segment: b"J" },
-            TestVector{ uri_string: "%4a", path_first_segment: b"J" },
-            TestVector{ uri_string: "%bc", path_first_segment: b"\xBC" },
-            TestVector{ uri_string: "%Bc", path_first_segment: b"\xBC" },
-            TestVector{ uri_string: "%bC", path_first_segment: b"\xBC" },
-            TestVector{ uri_string: "%BC", path_first_segment: b"\xBC" },
-            TestVector{ uri_string: "%41%42%43", path_first_segment: b"ABC" },
-            TestVector{ uri_string: "%41%4A%43%4b", path_first_segment: b"AJCK" },
+        named_tuple!(
+            struct TestVector {
+                uri_string: &'static str,
+                path_first_segment: &'static [u8]
+            }
+        );
+        let test_vectors: [TestVector; 9] = [
+            ("%41", &b"A"[..]).into(),
+            ("%4A", &b"J"[..]).into(),
+            ("%4a", &b"J"[..]).into(),
+            ("%bc", &b"\xBC"[..]).into(),
+            ("%Bc", &b"\xBC"[..]).into(),
+            ("%bC", &b"\xBC"[..]).into(),
+            ("%BC", &b"\xBC"[..]).into(),
+            ("%41%42%43", &b"ABC"[..]).into(),
+            ("%41%4A%43%4b", &b"AJCK"[..]).into(),
         ];
         for test_vector in &test_vectors {
-            let uri = Uri::parse(test_vector.uri_string);
+            let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
             let segment = uri.path().first().unwrap().clone();
-            assert_eq!(segment, test_vector.path_first_segment);
+            assert_eq!(segment, *test_vector.path_first_segment());
         }
     }
 
@@ -1898,53 +1927,55 @@ mod tests {
 
     #[test]
     fn reference_resolution() {
-        struct TestVector {
-            base_string: &'static str,
-            relative_reference_string: &'static str,
-            target_string: &'static str
-        };
-        let test_vectors = [
+        named_tuple!(
+            struct TestVector {
+                base_string: &'static str,
+                relative_reference_string: &'static str,
+                target_string: &'static str
+            }
+        );
+        let test_vectors: [TestVector; 32] = [
             // These are all taken from section 5.4.1
             // of RFC 3986 (https://tools.ietf.org/html/rfc3986).
-            TestVector{ base_string: "http://a/b/c/d;p?q", relative_reference_string: "g:h", target_string: "g:h" },
-            TestVector{ base_string: "http://a/b/c/d;p?q", relative_reference_string: "g", target_string: "http://a/b/c/g" },
-            TestVector{ base_string: "http://a/b/c/d;p?q", relative_reference_string: "./g", target_string: "http://a/b/c/g" },
-            TestVector{ base_string: "http://a/b/c/d;p?q", relative_reference_string: "g/", target_string: "http://a/b/c/g/" },
-            TestVector{ base_string: "http://a/b/c/d;p?q", relative_reference_string: "//g", target_string: "http://g" },
-            TestVector{ base_string: "http://a/b/c/d;p?q", relative_reference_string: "?y", target_string: "http://a/b/c/d;p?y" },
-            TestVector{ base_string: "http://a/b/c/d;p?q", relative_reference_string: "g?y", target_string: "http://a/b/c/g?y" },
-            TestVector{ base_string: "http://a/b/c/d;p?q", relative_reference_string: "#s", target_string: "http://a/b/c/d;p?q#s" },
-            TestVector{ base_string: "http://a/b/c/d;p?q", relative_reference_string: "g#s", target_string: "http://a/b/c/g#s" },
-            TestVector{ base_string: "http://a/b/c/d;p?q", relative_reference_string: "g?y#s", target_string: "http://a/b/c/g?y#s" },
-            TestVector{ base_string: "http://a/b/c/d;p?q", relative_reference_string: ";x", target_string: "http://a/b/c/;x" },
-            TestVector{ base_string: "http://a/b/c/d;p?q", relative_reference_string: "g;x", target_string: "http://a/b/c/g;x" },
-            TestVector{ base_string: "http://a/b/c/d;p?q", relative_reference_string: "g;x?y#s", target_string: "http://a/b/c/g;x?y#s" },
-            TestVector{ base_string: "http://a/b/c/d;p?q", relative_reference_string: "", target_string: "http://a/b/c/d;p?q" },
-            TestVector{ base_string: "http://a/b/c/d;p?q", relative_reference_string: ".", target_string: "http://a/b/c/" },
-            TestVector{ base_string: "http://a/b/c/d;p?q", relative_reference_string: "./", target_string: "http://a/b/c/" },
-            TestVector{ base_string: "http://a/b/c/d;p?q", relative_reference_string: "..", target_string: "http://a/b/" },
-            TestVector{ base_string: "http://a/b/c/d;p?q", relative_reference_string: "../", target_string: "http://a/b/" },
-            TestVector{ base_string: "http://a/b/c/d;p?q", relative_reference_string: "../g", target_string: "http://a/b/g" },
-            TestVector{ base_string: "http://a/b/c/d;p?q", relative_reference_string: "../..", target_string: "http://a" },
-            TestVector{ base_string: "http://a/b/c/d;p?q", relative_reference_string: "../../", target_string: "http://a" },
-            TestVector{ base_string: "http://a/b/c/d;p?q", relative_reference_string: "../../g", target_string: "http://a/g" },
+            ("http://a/b/c/d;p?q", "g:h", "g:h").into(),
+            ("http://a/b/c/d;p?q", "g", "http://a/b/c/g").into(),
+            ("http://a/b/c/d;p?q", "./g", "http://a/b/c/g").into(),
+            ("http://a/b/c/d;p?q", "g/", "http://a/b/c/g/").into(),
+            ("http://a/b/c/d;p?q", "//g", "http://g").into(),
+            ("http://a/b/c/d;p?q", "?y", "http://a/b/c/d;p?y").into(),
+            ("http://a/b/c/d;p?q", "g?y", "http://a/b/c/g?y").into(),
+            ("http://a/b/c/d;p?q", "#s", "http://a/b/c/d;p?q#s").into(),
+            ("http://a/b/c/d;p?q", "g#s", "http://a/b/c/g#s").into(),
+            ("http://a/b/c/d;p?q", "g?y#s", "http://a/b/c/g?y#s").into(),
+            ("http://a/b/c/d;p?q", ";x", "http://a/b/c/;x").into(),
+            ("http://a/b/c/d;p?q", "g;x", "http://a/b/c/g;x").into(),
+            ("http://a/b/c/d;p?q", "g;x?y#s", "http://a/b/c/g;x?y#s").into(),
+            ("http://a/b/c/d;p?q", "", "http://a/b/c/d;p?q").into(),
+            ("http://a/b/c/d;p?q", ".", "http://a/b/c/").into(),
+            ("http://a/b/c/d;p?q", "./", "http://a/b/c/").into(),
+            ("http://a/b/c/d;p?q", "..", "http://a/b/").into(),
+            ("http://a/b/c/d;p?q", "../", "http://a/b/").into(),
+            ("http://a/b/c/d;p?q", "../g", "http://a/b/g").into(),
+            ("http://a/b/c/d;p?q", "../..", "http://a").into(),
+            ("http://a/b/c/d;p?q", "../../", "http://a").into(),
+            ("http://a/b/c/d;p?q", "../../g", "http://a/g").into(),
 
             // Here are some examples of our own.
-            TestVector{ base_string: "http://example.com", relative_reference_string: "foo", target_string: "http://example.com/foo" },
-            TestVector{ base_string: "http://example.com/", relative_reference_string: "foo", target_string: "http://example.com/foo" },
-            TestVector{ base_string: "http://example.com", relative_reference_string: "foo/", target_string: "http://example.com/foo/" },
-            TestVector{ base_string: "http://example.com/", relative_reference_string: "foo/", target_string: "http://example.com/foo/" },
-            TestVector{ base_string: "http://example.com", relative_reference_string: "/foo", target_string: "http://example.com/foo" },
-            TestVector{ base_string: "http://example.com/", relative_reference_string: "/foo", target_string: "http://example.com/foo" },
-            TestVector{ base_string: "http://example.com", relative_reference_string: "/foo/", target_string: "http://example.com/foo/" },
-            TestVector{ base_string: "http://example.com/", relative_reference_string: "/foo/", target_string: "http://example.com/foo/" },
-            TestVector{ base_string: "http://example.com/", relative_reference_string: "?foo", target_string: "http://example.com/?foo" },
-            TestVector{ base_string: "http://example.com/", relative_reference_string: "#foo", target_string: "http://example.com/#foo" },
+            ("http://example.com", "foo", "http://example.com/foo").into(),
+            ("http://example.com/", "foo", "http://example.com/foo").into(),
+            ("http://example.com", "foo/", "http://example.com/foo/").into(),
+            ("http://example.com/", "foo/", "http://example.com/foo/").into(),
+            ("http://example.com", "/foo", "http://example.com/foo").into(),
+            ("http://example.com/", "/foo", "http://example.com/foo").into(),
+            ("http://example.com", "/foo/", "http://example.com/foo/").into(),
+            ("http://example.com/", "/foo/", "http://example.com/foo/").into(),
+            ("http://example.com/", "?foo", "http://example.com/?foo").into(),
+            ("http://example.com/", "#foo", "http://example.com/#foo").into(),
         ];
         for test_vector in &test_vectors {
-            let base_uri = Uri::parse(test_vector.base_string).unwrap();
-            let relative_reference_uri = Uri::parse(test_vector.relative_reference_string).unwrap();
-            let expected_target_uri = Uri::parse(test_vector.target_string).unwrap();
+            let base_uri = Uri::parse(test_vector.base_string()).unwrap();
+            let relative_reference_uri = Uri::parse(test_vector.relative_reference_string()).unwrap();
+            let expected_target_uri = Uri::parse(test_vector.target_string()).unwrap();
             let actual_target_uri = base_uri.resolve(&relative_reference_uri);
             assert_eq!(expected_target_uri, actual_target_uri);
         }
@@ -1970,60 +2001,64 @@ mod tests {
 
     #[test]
     fn ipv6_address_good() {
-        struct TestVector {
-            uri_string: &'static str,
-            expected_host: &'static [u8],
-        };
-        let test_vectors = [
-            TestVector{ uri_string: "http://[::1]/", expected_host: b"::1" },
-            TestVector{ uri_string: "http://[::ffff:1.2.3.4]/", expected_host: b"::ffff:1.2.3.4" },
-            TestVector{ uri_string: "http://[2001:db8:85a3:8d3:1319:8a2e:370:7348]/", expected_host: b"2001:db8:85a3:8d3:1319:8a2e:370:7348" },
-            TestVector{ uri_string: "http://[fFfF::1]", expected_host: b"fFfF::1" },
-            TestVector{ uri_string: "http://[1234::1]", expected_host: b"1234::1" },
-            TestVector{ uri_string: "http://[fFfF:1:2:3:4:5:6:a]", expected_host: b"fFfF:1:2:3:4:5:6:a" },
-            TestVector{ uri_string: "http://[2001:db8:85a3::8a2e:0]/", expected_host: b"2001:db8:85a3::8a2e:0" },
-            TestVector{ uri_string: "http://[2001:db8:85a3:8a2e::]/", expected_host: b"2001:db8:85a3:8a2e::" },
+        named_tuple!(
+            struct TestVector {
+                uri_string: &'static str,
+                expected_host: &'static [u8],
+            }
+        );
+        let test_vectors: [TestVector; 8] = [
+            ("http://[::1]/", &b"::1"[..]).into(),
+            ("http://[::ffff:1.2.3.4]/", &b"::ffff:1.2.3.4"[..]).into(),
+            ("http://[2001:db8:85a3:8d3:1319:8a2e:370:7348]/", &b"2001:db8:85a3:8d3:1319:8a2e:370:7348"[..]).into(),
+            ("http://[fFfF::1]", &b"fFfF::1"[..]).into(),
+            ("http://[1234::1]", &b"1234::1"[..]).into(),
+            ("http://[fFfF:1:2:3:4:5:6:a]", &b"fFfF:1:2:3:4:5:6:a"[..]).into(),
+            ("http://[2001:db8:85a3::8a2e:0]/", &b"2001:db8:85a3::8a2e:0"[..]).into(),
+            ("http://[2001:db8:85a3:8a2e::]/", &b"2001:db8:85a3:8a2e::"[..]).into(),
         ];
         for test_vector in &test_vectors {
-            let uri = Uri::parse(test_vector.uri_string);
+            let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
-            assert_eq!(Some(test_vector.expected_host), uri.unwrap().host());
+            assert_eq!(Some(*test_vector.expected_host()), uri.unwrap().host());
         }
     }
 
     #[test]
     fn ipv6_address_bad() {
-        struct TestVector {
-            uri_string: &'static str,
-            expected_error: Error,
-        };
-        let test_vectors = [
-            TestVector{ uri_string: "http://[::fFfF::1]", expected_error: Error::TooManyDoubleColons },
-            TestVector{ uri_string: "http://[::ffff:1.2.x.4]/", expected_error: Error::IllegalCharacter(Context::Ipv4Address) },
-            TestVector{ uri_string: "http://[::ffff:1.2.3.4.8]/", expected_error: Error::TooManyAddressParts },
-            TestVector{ uri_string: "http://[::ffff:1.2.3]/", expected_error: Error::TooFewAddressParts },
-            TestVector{ uri_string: "http://[::ffff:1.2.3.]/", expected_error: Error::TruncatedHost },
-            TestVector{ uri_string: "http://[::ffff:1.2.3.256]/", expected_error: Error::InvalidDecimalOctet },
-            TestVector{ uri_string: "http://[::fxff:1.2.3.4]/", expected_error: Error::IllegalCharacter(Context::Ipv6Address) },
-            TestVector{ uri_string: "http://[::ffff:1.2.3.-4]/", expected_error: Error::IllegalCharacter(Context::Ipv4Address) },
-            TestVector{ uri_string: "http://[::ffff:1.2.3. 4]/", expected_error: Error::IllegalCharacter(Context::Ipv4Address) },
-            TestVector{ uri_string: "http://[::ffff:1.2.3.4 ]/", expected_error: Error::IllegalCharacter(Context::Ipv4Address) },
-            TestVector{ uri_string: "http://[::ffff:1.2.3.4/", expected_error: Error::TruncatedHost },
-            TestVector{ uri_string: "http://[2001:db8:85a3:8d3:1319:8a2e:370:7348:0000]/", expected_error: Error::TooManyAddressParts },
-            TestVector{ uri_string: "http://[2001:db8:85a3:8d3:1319:8a2e:370:7348::1]/", expected_error: Error::TooManyAddressParts },
-            TestVector{ uri_string: "http://[2001:db8:85a3::8a2e:0:]/", expected_error: Error::TruncatedHost },
-            TestVector{ uri_string: "http://[2001:db8:85a3::8a2e::]/", expected_error: Error::TooManyDoubleColons },
-            TestVector{ uri_string: "http://[]/", expected_error: Error::TooFewAddressParts },
-            TestVector{ uri_string: "http://[:]/", expected_error: Error::TruncatedHost },
-            TestVector{ uri_string: "http://[v]/", expected_error: Error::TruncatedHost },
+        named_tuple!(
+            struct TestVector {
+                uri_string: &'static str,
+                expected_error: Error,
+            }
+        );
+        let test_vectors: [TestVector; 18] = [
+            ("http://[::fFfF::1]", Error::TooManyDoubleColons).into(),
+            ("http://[::ffff:1.2.x.4]/", Error::IllegalCharacter(Context::Ipv4Address)).into(),
+            ("http://[::ffff:1.2.3.4.8]/", Error::TooManyAddressParts).into(),
+            ("http://[::ffff:1.2.3]/", Error::TooFewAddressParts).into(),
+            ("http://[::ffff:1.2.3.]/", Error::TruncatedHost).into(),
+            ("http://[::ffff:1.2.3.256]/", Error::InvalidDecimalOctet).into(),
+            ("http://[::fxff:1.2.3.4]/", Error::IllegalCharacter(Context::Ipv6Address)).into(),
+            ("http://[::ffff:1.2.3.-4]/", Error::IllegalCharacter(Context::Ipv4Address)).into(),
+            ("http://[::ffff:1.2.3. 4]/", Error::IllegalCharacter(Context::Ipv4Address)).into(),
+            ("http://[::ffff:1.2.3.4 ]/", Error::IllegalCharacter(Context::Ipv4Address)).into(),
+            ("http://[::ffff:1.2.3.4/", Error::TruncatedHost).into(),
+            ("http://[2001:db8:85a3:8d3:1319:8a2e:370:7348:0000]/", Error::TooManyAddressParts).into(),
+            ("http://[2001:db8:85a3:8d3:1319:8a2e:370:7348::1]/", Error::TooManyAddressParts).into(),
+            ("http://[2001:db8:85a3::8a2e:0:]/", Error::TruncatedHost).into(),
+            ("http://[2001:db8:85a3::8a2e::]/", Error::TooManyDoubleColons).into(),
+            ("http://[]/", Error::TooFewAddressParts).into(),
+            ("http://[:]/", Error::TruncatedHost).into(),
+            ("http://[v]/", Error::TruncatedHost).into(),
         ];
         for test_vector in &test_vectors {
-            let uri = Uri::parse(test_vector.uri_string);
+            let uri = Uri::parse(test_vector.uri_string());
             assert_eq!(
-                test_vector.expected_error,
+                *test_vector.expected_error(),
                 uri.unwrap_err(),
                 "{}",
-                test_vector.uri_string
+                test_vector.uri_string()
             );
         }
 
@@ -2034,78 +2069,87 @@ mod tests {
     }
 
     #[test]
+    // NOTE: `clippy::too_many_arguments` lint has to be disabled at the
+    // test level because it's triggered inside the `named_tuple!` macro
+    // expansion.
+    #[allow(clippy::too_many_arguments)]
     fn generate_string() {
-        struct TestVector {
-            scheme: Option<&'static str>,
-            userinfo: Option<&'static [u8]>,
-            host: Option<&'static [u8]>,
-            port: Option<u16>,
-            path: &'static str,
-            query: Option<&'static [u8]>,
-            fragment: Option<&'static [u8]>,
-            expected_uri_string: &'static str
-        };
-        let test_vectors = [
+        named_tuple!(
+            struct TestVector {
+                scheme: Option<&'static str>,
+                userinfo: Option<&'static [u8]>,
+                host: Option<&'static [u8]>,
+                port: Option<u16>,
+                path: &'static str,
+                query: Option<&'static [u8]>,
+                fragment: Option<&'static [u8]>,
+                expected_uri_string: &'static str
+            }
+        );
+        let test_vectors: [TestVector; 32] = [
             // general test vectors
-            TestVector{ scheme: Some("http"), userinfo: Some(b"bob"), host: Some(b"www.example.com"), port: Some(8080), path: "/abc/def",  query: Some(b"foobar"),   fragment: Some(b"ch2"),   expected_uri_string: "http://bob@www.example.com:8080/abc/def?foobar#ch2" },
-            TestVector{ scheme: Some("http"), userinfo: Some(b"bob"), host: Some(b"www.example.com"), port: Some(0), path: "",      query: Some(b"foobar"), fragment: Some(b"ch2"), expected_uri_string: "http://bob@www.example.com:0?foobar#ch2" },
-            TestVector{ scheme: Some("http"), userinfo: Some(b"bob"), host: Some(b"www.example.com"), port: Some(0), path: "",      query: Some(b"foobar"), fragment: Some(b""),    expected_uri_string: "http://bob@www.example.com:0?foobar#" },
-            TestVector{ scheme: None,         userinfo: None,        host: Some(b"example.com"),     port: None,    path: "",      query: Some(b"bar"),    fragment: None,        expected_uri_string: "//example.com?bar" },
-            TestVector{ scheme: None,         userinfo: None,        host: Some(b"example.com"),     port: None,    path: "",      query: Some(b""),       fragment: None,        expected_uri_string: "//example.com?" },
-            TestVector{ scheme: None,         userinfo: None,        host: Some(b"example.com"),     port: None,    path: "",      query: None,           fragment: None,        expected_uri_string: "//example.com" },
-            TestVector{ scheme: None,         userinfo: None,        host: Some(b"example.com"),     port: None,    path: "/",     query: None,           fragment: None,        expected_uri_string: "//example.com/" },
-            TestVector{ scheme: None,         userinfo: None,        host: Some(b"example.com"),     port: None,    path: "/xyz",  query: None,           fragment: None,        expected_uri_string: "//example.com/xyz" },
-            TestVector{ scheme: None,         userinfo: None,        host: Some(b"example.com"),     port: None,    path: "/xyz/", query: None,           fragment: None,        expected_uri_string: "//example.com/xyz/" },
-            TestVector{ scheme: None,         userinfo: None,        host: None,                    port: None,    path: "/",     query: None,           fragment: None,        expected_uri_string: "/" },
-            TestVector{ scheme: None,         userinfo: None,        host: None,                    port: None,    path: "/xyz",  query: None,           fragment: None,        expected_uri_string: "/xyz" },
-            TestVector{ scheme: None,         userinfo: None,        host: None,                    port: None,    path: "/xyz/", query: None,           fragment: None,        expected_uri_string: "/xyz/" },
-            TestVector{ scheme: None,         userinfo: None,        host: None,                    port: None,    path: "",      query: None,           fragment: None,        expected_uri_string: "" },
-            TestVector{ scheme: None,         userinfo: None,        host: None,                    port: None,    path: "xyz",   query: None,           fragment: None,        expected_uri_string: "xyz" },
-            TestVector{ scheme: None,         userinfo: None,        host: None,                    port: None,    path: "xyz/",  query: None,           fragment: None,        expected_uri_string: "xyz/" },
-            TestVector{ scheme: None,         userinfo: None,        host: None,                    port: None,    path: "",      query: Some(b"bar"),    fragment: None,        expected_uri_string: "?bar" },
-            TestVector{ scheme: Some("http"), userinfo: None,        host: None,                    port: None,    path: "",      query: Some(b"bar"),    fragment: None,        expected_uri_string: "http:?bar" },
-            TestVector{ scheme: Some("http"), userinfo: None,        host: None,                    port: None,    path: "",      query: None,           fragment: None,        expected_uri_string: "http:" },
-            TestVector{ scheme: Some("http"), userinfo: None,        host: Some(b"::1"),           port: None,    path: "",      query: None,           fragment: None,        expected_uri_string: "http://[::1]" },
-            TestVector{ scheme: Some("http"), userinfo: None,        host: Some(b"::1.2.3.4"),     port: None,    path: "",      query: None,           fragment: None,        expected_uri_string: "http://[::1.2.3.4]" },
-            TestVector{ scheme: Some("http"), userinfo: None,        host: Some(b"1.2.3.4"),         port: None,    path: "",      query: None,           fragment: None,        expected_uri_string: "http://1.2.3.4" },
-            TestVector{ scheme: None,         userinfo: None,        host: None,                    port: None,    path: "",      query: None,           fragment: None,        expected_uri_string: "" },
-            TestVector{ scheme: Some("http"), userinfo: Some(b"bob"), host: None,                    port: None,    path: "",      query: Some(b"foobar"), fragment: None,        expected_uri_string: "http://bob@?foobar" },
-            TestVector{ scheme: None,         userinfo: Some(b"bob"), host: None,                    port: None,    path: "",      query: Some(b"foobar"), fragment: None,        expected_uri_string: "//bob@?foobar" },
-            TestVector{ scheme: None,         userinfo: Some(b"bob"), host: None,                    port: None,    path: "",      query: None,           fragment: None,        expected_uri_string: "//bob@" },
+            // scheme      userinfo           host                           port        path         query                   fragment           expected_uri_string
+            (Some("http"), Some(&b"bob"[..]), Some(&b"www.example.com"[..]), Some(8080), "/abc/def",  Some(&b"foobar"[..]),   Some(&b"ch2"[..]), "http://bob@www.example.com:8080/abc/def?foobar#ch2").into(),
+            (Some("http"), Some(&b"bob"[..]), Some(&b"www.example.com"[..]), Some(0),    "",          Some(&b"foobar"[..]),   Some(&b"ch2"[..]), "http://bob@www.example.com:0?foobar#ch2").into(),
+            (Some("http"), Some(&b"bob"[..]), Some(&b"www.example.com"[..]), Some(0),    "",          Some(&b"foobar"[..]),   Some(&b""[..]),    "http://bob@www.example.com:0?foobar#").into(),
+            (None,         None,              Some(&b"example.com"[..]),     None,       "",          Some(&b"bar"[..]),      None,              "//example.com?bar").into(),
+            (None,         None,              Some(&b"example.com"[..]),     None,       "",          Some(&b""[..]),         None,              "//example.com?").into(),
+            (None,         None,              Some(&b"example.com"[..]),     None,       "",          None,                   None,              "//example.com").into(),
+            (None,         None,              Some(&b"example.com"[..]),     None,       "/",         None,                   None,              "//example.com/").into(),
+            (None,         None,              Some(&b"example.com"[..]),     None,       "/xyz",      None,                   None,              "//example.com/xyz").into(),
+            (None,         None,              Some(&b"example.com"[..]),     None,       "/xyz/",     None,                   None,              "//example.com/xyz/").into(),
+            (None,         None,              None,                          None,       "/",         None,                   None,              "/").into(),
+            (None,         None,              None,                          None,       "/xyz",      None,                   None,              "/xyz").into(),
+            (None,         None,              None,                          None,       "/xyz/",     None,                   None,              "/xyz/").into(),
+            (None,         None,              None,                          None,       "",          None,                   None,              "").into(),
+            (None,         None,              None,                          None,       "xyz",       None,                   None,              "xyz").into(),
+            (None,         None,              None,                          None,       "xyz/",      None,                   None,              "xyz/").into(),
+            (None,         None,              None,                          None,       "",          Some(&b"bar"[..]),      None,              "?bar").into(),
+            (Some("http"), None,              None,                          None,       "",          Some(&b"bar"[..]),      None,              "http:?bar").into(),
+            (Some("http"), None,              None,                          None,       "",          None,                   None,              "http:").into(),
+            (Some("http"), None,              Some(&b"::1"[..]),             None,       "",          None,                   None,              "http://[::1]").into(),
+            (Some("http"), None,              Some(&b"::1.2.3.4"[..]),       None,       "",          None,                   None,              "http://[::1.2.3.4]").into(),
+            (Some("http"), None,              Some(&b"1.2.3.4"[..]),         None,       "",          None,                   None,              "http://1.2.3.4").into(),
+            (None,         None,              None,                          None,       "",          None,                   None,              "").into(),
+            (Some("http"), Some(&b"bob"[..]), None,                          None,       "",          Some(&b"foobar"[..]),   None,              "http://bob@?foobar").into(),
+            (None,         Some(&b"bob"[..]), None,                          None,       "",          Some(&b"foobar"[..]),   None,              "//bob@?foobar").into(),
+            (None,         Some(&b"bob"[..]), None,                          None,       "",          None,                   None,              "//bob@").into(),
 
             // percent-encoded character test vectors
-            TestVector{ scheme: Some("http"), userinfo: Some(b"b b"), host: Some(b"www.example.com"), port: Some(8080), path: "/abc/def", query: Some(b"foobar"),  fragment: Some(b"ch2"), expected_uri_string: "http://b%20b@www.example.com:8080/abc/def?foobar#ch2" },
-            TestVector{ scheme: Some("http"), userinfo: Some(b"bob"), host: Some(b"www.e ample.com"), port: Some(8080), path: "/abc/def", query: Some(b"foobar"),  fragment: Some(b"ch2"), expected_uri_string: "http://bob@www.e%20ample.com:8080/abc/def?foobar#ch2" },
-            TestVector{ scheme: Some("http"), userinfo: Some(b"bob"), host: Some(b"www.example.com"), port: Some(8080), path: "/a c/def", query: Some(b"foobar"),  fragment: Some(b"ch2"), expected_uri_string: "http://bob@www.example.com:8080/a%20c/def?foobar#ch2" },
-            TestVector{ scheme: Some("http"), userinfo: Some(b"bob"), host: Some(b"www.example.com"), port: Some(8080), path: "/abc/def", query: Some(b"foo ar"),  fragment: Some(b"ch2"), expected_uri_string: "http://bob@www.example.com:8080/abc/def?foo%20ar#ch2" },
-            TestVector{ scheme: Some("http"), userinfo: Some(b"bob"), host: Some(b"www.example.com"), port: Some(8080), path: "/abc/def", query: Some(b"foobar"),  fragment: Some(b"c 2"), expected_uri_string: "http://bob@www.example.com:8080/abc/def?foobar#c%202" },
-            TestVector{ scheme: Some("http"), userinfo: Some(b"bob"), host: Some(b"\xE1\x88\xB4.example.com"),   port: Some(8080), path: "/abc/def",  query: Some(b"foobar"), fragment: None,        expected_uri_string: "http://bob@%E1%88%B4.example.com:8080/abc/def?foobar" },
+            // scheme      userinfo           host                                    port        path        query                  fragment           expected_uri_string
+            (Some("http"), Some(&b"b b"[..]), Some(&b"www.example.com"[..]),          Some(8080), "/abc/def", Some(&b"foobar"[..]),  Some(&b"ch2"[..]), "http://b%20b@www.example.com:8080/abc/def?foobar#ch2").into(),
+            (Some("http"), Some(&b"bob"[..]), Some(&b"www.e ample.com"[..]),          Some(8080), "/abc/def", Some(&b"foobar"[..]),  Some(&b"ch2"[..]), "http://bob@www.e%20ample.com:8080/abc/def?foobar#ch2").into(),
+            (Some("http"), Some(&b"bob"[..]), Some(&b"www.example.com"[..]),          Some(8080), "/a c/def", Some(&b"foobar"[..]),  Some(&b"ch2"[..]), "http://bob@www.example.com:8080/a%20c/def?foobar#ch2").into(),
+            (Some("http"), Some(&b"bob"[..]), Some(&b"www.example.com"[..]),          Some(8080), "/abc/def", Some(&b"foo ar"[..]),  Some(&b"ch2"[..]), "http://bob@www.example.com:8080/abc/def?foo%20ar#ch2").into(),
+            (Some("http"), Some(&b"bob"[..]), Some(&b"www.example.com"[..]),          Some(8080), "/abc/def", Some(&b"foobar"[..]),  Some(&b"c 2"[..]), "http://bob@www.example.com:8080/abc/def?foobar#c%202").into(),
+            (Some("http"), Some(&b"bob"[..]), Some(&b"\xE1\x88\xB4.example.com"[..]), Some(8080), "/abc/def", Some(&b"foobar"[..]),  None,              "http://bob@%E1%88%B4.example.com:8080/abc/def?foobar").into(),
 
             // normalization of IPv6 address hex digits
-            TestVector{ scheme: Some("http"), userinfo: Some(b"bob"), host: Some(b"fFfF::1"),       port: Some(8080), path: "/abc/def",  query: Some(b"foobar"), fragment: Some(b"c 2"), expected_uri_string: "http://bob@[ffff::1]:8080/abc/def?foobar#c%202" },
+            // scheme      userinfo           host                   port        path        query                 fragment           expected_uri_string
+            (Some("http"), Some(&b"bob"[..]), Some(&b"fFfF::1"[..]), Some(8080), "/abc/def", Some(&b"foobar"[..]), Some(&b"c 2"[..]), "http://bob@[ffff::1]:8080/abc/def?foobar#c%202").into(),
         ];
         for test_vector in &test_vectors {
             let mut uri = Uri::default();
-            assert!(uri.set_scheme(test_vector.scheme).is_ok());
+            assert!(uri.set_scheme(*test_vector.scheme()).is_ok());
             #[allow(unused_parens)]
             if (
-                test_vector.userinfo.is_some()
-                || test_vector.host.is_some()
-                || test_vector.port.is_some()
+                test_vector.userinfo().is_some()
+                || test_vector.host().is_some()
+                || test_vector.port().is_some()
             ) {
                 let mut authority = Authority::default();
-                authority.set_userinfo(test_vector.userinfo);
-                authority.set_host(test_vector.host.unwrap_or_else(|| &b""[..]));
-                authority.set_port(test_vector.port);
+                authority.set_userinfo(*test_vector.userinfo());
+                authority.set_host(test_vector.host().unwrap_or_else(|| &b""[..]));
+                authority.set_port(*test_vector.port());
                 uri.set_authority(Some(authority));
             } else {
                 uri.set_authority(None);
             }
-            uri.set_path_from_str(test_vector.path);
-            uri.set_query(test_vector.query);
-            uri.set_fragment(test_vector.fragment);
+            uri.set_path_from_str(test_vector.path());
+            uri.set_query(*test_vector.query());
+            uri.set_fragment(*test_vector.fragment());
             assert_eq!(
-                test_vector.expected_uri_string,
+                *test_vector.expected_uri_string(),
                 uri.to_string()
             );
         }
