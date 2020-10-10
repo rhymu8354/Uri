@@ -1279,13 +1279,13 @@ mod tests {
                 path_out: Vec<&'static [u8]>,
             }
         );
-        let test_vectors: [TestVector; 4] = [
+        let test_vectors: &[TestVector] = &[
             ("", vec![]).into(),
             ("/", vec![&b""[..]]).into(),
             ("/foo", vec![&b""[..], &b"foo"[..]]).into(),
             ("foo/", vec![&b"foo"[..], &b""[..]]).into(),
         ];
-        for test_vector in &test_vectors {
+        for test_vector in test_vectors {
             let uri = Uri::parse(test_vector.path_in());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
@@ -1367,13 +1367,13 @@ mod tests {
                 is_relative_reference: bool
             }
         );
-        let test_vectors: [TestVector; 4] = [
+        let test_vectors: &[TestVector] = &[
             ("http://www.example.com/", false).into(),
             ("http://www.example.com", false).into(),
             ("/", true).into(),
             ("foo", true).into(),
         ];
-        for test_vector in &test_vectors {
+        for test_vector in test_vectors {
             let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
@@ -1392,7 +1392,7 @@ mod tests {
                 contains_relative_path: bool
             }
         );
-        let test_vectors: [TestVector; 5] = [
+        let test_vectors: &[TestVector] = &[
             ("http://www.example.com/", false).into(),
             ("http://www.example.com", false).into(),
             ("/", false).into(),
@@ -1425,7 +1425,7 @@ mod tests {
                 fragment: Option<&'static [u8]>
             }
         );
-        let test_vectors: [TestVector; 7] = [
+        let test_vectors: &[TestVector] = &[
             ("http://www.example.com/", &b"www.example.com"[..], None, None).into(),
             ("http://example.com?foo", &b"example.com"[..], Some(&b"foo"[..]), None).into(),
             ("http://www.example.com#foo", &b"www.example.com"[..], None, Some(&b"foo"[..])).into(),
@@ -1456,7 +1456,7 @@ mod tests {
                 userinfo: Option<&'static [u8]>,
             }
         );
-        let test_vectors: [TestVector; 7] = [
+        let test_vectors: &[TestVector] = &[
             ("http://www.example.com/", None).into(),
             ("http://joe@www.example.com", Some(&b"joe"[..])).into(),
             ("http://pepe:feelsbadman@www.example.com", Some(&b"pepe:feelsbadman"[..])).into(),
@@ -1465,7 +1465,7 @@ mod tests {
             ("/", None).into(),
             ("foo", None).into(),
         ];
-        for test_vector in &test_vectors {
+        for test_vector in test_vectors {
             let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
@@ -1507,7 +1507,7 @@ mod tests {
                 scheme: &'static str
             }
         );
-        let test_vectors: [TestVector; 6] = [
+        let test_vectors: &[TestVector] = &[
             ("h://www.example.com/", "h").into(),
             ("x+://www.example.com/", "x+").into(),
             ("y-://www.example.com/", "y-").into(),
@@ -1515,7 +1515,7 @@ mod tests {
             ("aa://www.example.com/", "aa").into(),
             ("a0://www.example.com/", "a0").into(),
         ];
-        for test_vector in &test_vectors {
+        for test_vector in test_vectors {
             let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
@@ -1560,7 +1560,7 @@ mod tests {
                 userinfo: &'static [u8]
             }
         );
-        let test_vectors: [TestVector; 7] = [
+        let test_vectors: &[TestVector] = &[
             ("//%41@www.example.com/", &b"A"[..]).into(),
             ("//@www.example.com/", &b""[..]).into(),
             ("//!@www.example.com/", &b"!"[..]).into(),
@@ -1569,7 +1569,7 @@ mod tests {
             ("//;@www.example.com/", &b";"[..]).into(),
             ("http://:@www.example.com/", &b":"[..]).into(),
         ];
-        for test_vector in &test_vectors {
+        for test_vector in test_vectors {
             let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
@@ -1598,7 +1598,7 @@ mod tests {
                 host: &'static [u8]
             }
         );
-        let test_vectors: [TestVector; 9] = [
+        let test_vectors: &[TestVector] = &[
             ("//%41/", &b"a"[..]).into(),
             ("///", &b""[..]).into(),
             ("//!/", &b"!"[..]).into(),
@@ -1609,7 +1609,7 @@ mod tests {
             ("//[v7.:]/", &b"v7.:"[..]).into(),
             ("//[v7.aB]/", &b"v7.aB"[..]).into(),
         ];
-        for test_vector in &test_vectors {
+        for test_vector in test_vectors {
             let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
@@ -1699,14 +1699,14 @@ mod tests {
                 path: Vec<&'static [u8]>
             }
         );
-        let test_vectors: [TestVector; 5] = [
+        let test_vectors: &[TestVector] = &[
             ("/:/foo", vec![&b""[..], &b":"[..], &b"foo"[..]]).into(),
             ("bob@/foo", vec![&b"bob@"[..], &b"foo"[..]]).into(),
             ("hello!", vec![&b"hello!"[..]]).into(),
             ("urn:hello,%20w%6Frld", vec![&b"hello, world"[..]]).into(),
             ("//example.com/foo/(bar)/", vec![&b""[..], &b"foo"[..], &b"(bar)"[..], &b""[..]]).into(),
         ];
-        for test_vector in &test_vectors {
+        for test_vector in test_vectors {
             let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
@@ -1753,7 +1753,7 @@ mod tests {
                 query: &'static [u8]
             }
         );
-        let test_vectors: [TestVector; 6] = [
+        let test_vectors: &[TestVector] = &[
             ("/?:/foo", &b":/foo"[..]).into(),
             ("?bob@/foo", &b"bob@/foo"[..]).into(),
             ("?hello!", &b"hello!"[..]).into(),
@@ -1811,7 +1811,7 @@ mod tests {
                 fragment: &'static [u8]
             }
         );
-        let test_vectors: [TestVector; 6] = [
+        let test_vectors: &[TestVector] = &[
             ("/#:/foo", &b":/foo"[..]).into(),
             ("#bob@/foo", &b"bob@/foo"[..]).into(),
             ("#hello!", &b"hello!"[..]).into(),
@@ -1819,7 +1819,7 @@ mod tests {
             ("//example.com/foo#(bar)/", &b"(bar)/"[..]).into(),
             ("http://www.example.com/#foo?bar", &b"foo?bar"[..]).into(),
         ];
-        for test_vector in &test_vectors {
+        for test_vector in test_vectors {
             let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
@@ -1835,7 +1835,7 @@ mod tests {
                 path_first_segment: &'static [u8]
             }
         );
-        let test_vectors: [TestVector; 9] = [
+        let test_vectors: &[TestVector] = &[
             ("%41", &b"A"[..]).into(),
             ("%4A", &b"J"[..]).into(),
             ("%4a", &b"J"[..]).into(),
@@ -1846,7 +1846,7 @@ mod tests {
             ("%41%42%43", &b"ABC"[..]).into(),
             ("%41%4A%43%4b", &b"AJCK"[..]).into(),
         ];
-        for test_vector in &test_vectors {
+        for test_vector in test_vectors {
             let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
@@ -1934,7 +1934,7 @@ mod tests {
                 target_string: &'static str
             }
         );
-        let test_vectors: [TestVector; 32] = [
+        let test_vectors: &[TestVector] = &[
             // These are all taken from section 5.4.1
             // of RFC 3986 (https://tools.ietf.org/html/rfc3986).
             ("http://a/b/c/d;p?q", "g:h", "g:h").into(),
@@ -1972,7 +1972,7 @@ mod tests {
             ("http://example.com/", "?foo", "http://example.com/?foo").into(),
             ("http://example.com/", "#foo", "http://example.com/#foo").into(),
         ];
-        for test_vector in &test_vectors {
+        for test_vector in test_vectors {
             let base_uri = Uri::parse(test_vector.base_string()).unwrap();
             let relative_reference_uri = Uri::parse(test_vector.relative_reference_string()).unwrap();
             let expected_target_uri = Uri::parse(test_vector.target_string()).unwrap();
@@ -2007,7 +2007,7 @@ mod tests {
                 expected_host: &'static [u8],
             }
         );
-        let test_vectors: [TestVector; 8] = [
+        let test_vectors: &[TestVector] = &[
             ("http://[::1]/", &b"::1"[..]).into(),
             ("http://[::ffff:1.2.3.4]/", &b"::ffff:1.2.3.4"[..]).into(),
             ("http://[2001:db8:85a3:8d3:1319:8a2e:370:7348]/", &b"2001:db8:85a3:8d3:1319:8a2e:370:7348"[..]).into(),
@@ -2017,7 +2017,7 @@ mod tests {
             ("http://[2001:db8:85a3::8a2e:0]/", &b"2001:db8:85a3::8a2e:0"[..]).into(),
             ("http://[2001:db8:85a3:8a2e::]/", &b"2001:db8:85a3:8a2e::"[..]).into(),
         ];
-        for test_vector in &test_vectors {
+        for test_vector in test_vectors {
             let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             assert_eq!(Some(*test_vector.expected_host()), uri.unwrap().host());
@@ -2032,7 +2032,7 @@ mod tests {
                 expected_error: Error,
             }
         );
-        let test_vectors: [TestVector; 18] = [
+        let test_vectors: &[TestVector] = &[
             ("http://[::fFfF::1]", Error::TooManyDoubleColons).into(),
             ("http://[::ffff:1.2.x.4]/", Error::IllegalCharacter(Context::Ipv4Address)).into(),
             ("http://[::ffff:1.2.3.4.8]/", Error::TooManyAddressParts).into(),
@@ -2052,7 +2052,7 @@ mod tests {
             ("http://[:]/", Error::TruncatedHost).into(),
             ("http://[v]/", Error::TruncatedHost).into(),
         ];
-        for test_vector in &test_vectors {
+        for test_vector in test_vectors {
             let uri = Uri::parse(test_vector.uri_string());
             assert_eq!(
                 *test_vector.expected_error(),
@@ -2086,7 +2086,7 @@ mod tests {
                 expected_uri_string: &'static str
             }
         );
-        let test_vectors: [TestVector; 32] = [
+        let test_vectors: &[TestVector] = &[
             // general test vectors
             // scheme      userinfo           host                           port        path         query                   fragment           expected_uri_string
             (Some("http"), Some(&b"bob"[..]), Some(&b"www.example.com"[..]), Some(8080), "/abc/def",  Some(&b"foobar"[..]),   Some(&b"ch2"[..]), "http://bob@www.example.com:8080/abc/def?foobar#ch2").into(),
@@ -2128,7 +2128,7 @@ mod tests {
             // scheme      userinfo           host                   port        path        query                 fragment           expected_uri_string
             (Some("http"), Some(&b"bob"[..]), Some(&b"fFfF::1"[..]), Some(8080), "/abc/def", Some(&b"foobar"[..]), Some(&b"c 2"[..]), "http://bob@[ffff::1]:8080/abc/def?foobar#c%202").into(),
         ];
-        for test_vector in &test_vectors {
+        for test_vector in test_vectors {
             let mut uri = Uri::default();
             assert!(uri.set_scheme(*test_vector.scheme()).is_ok());
             #[allow(unused_parens)]

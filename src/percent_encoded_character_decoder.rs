@@ -94,14 +94,14 @@ mod tests {
                 expected_output: u8,
             }
         );
-        let test_vectors: [TestVector; 5] = [
+        let test_vectors: &[TestVector] = &[
             (['4', '1'], b'A').into(),
             (['5', 'A'], b'Z').into(),
             (['6', 'e'], b'n').into(),
             (['e', '1'], b'\xe1').into(),
             (['C', 'A'], b'\xca').into(),
         ];
-        for test_vector in &test_vectors {
+        for test_vector in test_vectors {
             let mut pec = PercentEncodedCharacterDecoder::new();
             assert_eq!(
                 Ok(None),
