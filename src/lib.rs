@@ -642,29 +642,9 @@ impl Uri {
 
     #[must_use = "why u no use host return value?"]
     pub fn host(&self) -> Option<&[u8]> {
-        // Here is another way to do the same thing, but with some Rust-fu.
-        // Credit goes to everx80, ABuffSeagull, and silen_z:
-        //
-        // self.authority
-        //     .as_ref()
-        //     .and_then(
-        //         |authority| authority.host.as_deref()
-        //     )
-        //
-        // * First `as_ref` gets our authority from `&Option<Authority>` into
-        //   `Option<&Authority>` (there is an implicit borrow of
-        //   `self.authority` first).
-        // * Next, `and_then` basically converts `Option<&Authority>`
-        //   into `Option<&[u8]>` by leveraging the closure we provide
-        //   to convert `&Authority` into `Option<&[u8]>`.
-        // * Finally, our closure uses `as_deref` to turn our `Option<Vec<u8>>`
-        //   into an `Option<&[u8]>` since Vec<T> implements DeRef with
-        //   `Target=[T]`
-        if let Some(authority) = &self.authority {
-            Some(authority.host())
-        } else {
-            None
-        }
+        self.authority
+            .as_ref()
+            .map(Authority::host)
     }
 
     fn is_path_absolute(path: &[Vec<u8>]) -> bool {
