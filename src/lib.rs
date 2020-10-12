@@ -157,7 +157,7 @@ lazy_static! {
         .collect::<HashSet<char>>();
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Context {
     Fragment,
     Host,
@@ -602,30 +602,29 @@ impl Uri {
         context: Context
     ) -> Result<Vec<u8>, Error> {
         let mut decoding_pec = false;
-        let mut output = Vec::<u8>::new();
         let mut pec_decoder = PercentEncodedCharacterDecoder::new();
-        // TODO: revisit this and try to use iterators, once I get better at
-        // Rust.
-        //
-        // [13:50] LeinardoSmith: you could do the find_if and set the
-        // condition to when you want to exit
-        //
-        // [13:52] 715209: i found this: https://stackoverflow.com/a/31507194
-        for c in element.chars() {
-            if decoding_pec {
-                if let Some(c) = pec_decoder.next(c)? {
-                    decoding_pec = false;
-                    output.push(c);
+        element
+            .chars()
+            .filter_map(|c| {
+                if decoding_pec {
+                    pec_decoder
+                        .next(c)
+                        .map_err(Into::into)
+                        .transpose()
+                        .map(|c| {
+                            decoding_pec = false;
+                            c
+                        })
+                } else if c == '%' {
+                    decoding_pec = true;
+                    None
+                } else if allowed_characters.contains(&c) {
+                    Some(Ok(c as u8))
+                } else {
+                    Some(Err(Error::IllegalCharacter(context)))
                 }
-            } else if c == '%' {
-                decoding_pec = true;
-            } else if allowed_characters.contains(&c) {
-                output.push(c as u8);
-            } else {
-                return Err(Error::IllegalCharacter(context));
-            }
-        }
-        Ok(output)
+            })
+            .collect()
     }
 
     fn decode_query_or_fragment(
