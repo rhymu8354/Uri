@@ -496,14 +496,14 @@ impl Authority {
         self.port
     }
 
-    pub fn set_userinfo<T>(&mut self, userinfo: Option<T>)
-        where Vec<u8>: From<T>
+    pub fn set_userinfo<T>(&mut self, userinfo: T)
+        where T: Into<Option<Vec<u8>>>
     {
-        self.userinfo = userinfo.map(Into::into);
+        self.userinfo = userinfo.into();
     }
 
     pub fn set_host<T>(&mut self, host: T)
-        where Vec<u8>: From<T>
+        where T: Into<Vec<u8>>
     {
         self.host = host.into();
     }
@@ -554,25 +554,27 @@ impl Uri {
         self.authority.as_ref()
     }
 
-    fn check_scheme(scheme: &str) -> Result<&str, Error> {
-        if scheme.is_empty() {
-            return Err(Error::EmptyScheme);
-        }
-        scheme
-            .chars()
-            .enumerate()
-            .try_fold((), |_, (i, c)| {
-                let valid_characters: &HashSet<char> = if i == 0 {
-                    &ALPHA
-                } else {
-                    &SCHEME_NOT_FIRST
-                };
-                if valid_characters.contains(&c) {
-                    Ok(())
-                } else {
-                    Err(Error::IllegalCharacter(Context::Scheme))
-                }
-            })?;
+    fn check_scheme<T>(scheme: T) -> Result<T, Error>
+        where T: AsRef<str>
+    {
+        match scheme.as_ref() {
+            "" => return Err(Error::EmptyScheme),
+            scheme => scheme
+                .chars()
+                .enumerate()
+                .try_fold((), |_, (i, c)| {
+                    let valid_characters: &HashSet<char> = if i == 0 {
+                        &ALPHA
+                    } else {
+                        &SCHEME_NOT_FIRST
+                    };
+                    if valid_characters.contains(&c) {
+                        Ok(())
+                    } else {
+                        Err(Error::IllegalCharacter(Context::Scheme))
+                    }
+                })?,
+        };
         Ok(scheme)
     }
 
@@ -1115,45 +1117,54 @@ impl Uri {
         self.scheme.as_deref()
     }
 
-    pub fn set_authority(&mut self, authority: Option<Authority>) {
-        self.authority = authority;
-    }
-
-    pub fn set_fragment(&mut self, fragment: Option<&[u8]>) {
-        self.fragment = fragment.map(Into::into);
-    }
-
-    pub fn set_path<'a, T>(&mut self, path: T)
-        where T: Iterator<Item=&'a [u8]>
+    pub fn set_authority<T>(&mut self, authority: T)
+        where T: Into<Option<Authority>>
     {
-        self.path = path.map(std::borrow::ToOwned::to_owned).collect();
+        self.authority = authority.into();
     }
 
-    pub fn set_path_from_str<'a, T>(&mut self, path: T)
-        where T: AsRef<str> + 'a
+    pub fn set_fragment<T>(&mut self, fragment: T)
+        where T: Into<Option<Vec<u8>>>
     {
-        let path = path.as_ref();
-        if path.is_empty() {
-            self.set_path(std::iter::empty());
-        } else {
-            self.set_path(
-                path.split('/').map(str::as_bytes)
-            );
+        self.fragment = fragment.into();
+    }
+
+    pub fn set_path<T>(&mut self, path: T)
+        where T: Into<Vec<Vec<u8>>>
+    {
+        self.path = path.into();
+    }
+
+    pub fn set_path_from_str<T>(&mut self, path: T)
+        where T: AsRef<str>
+    {
+        match path.as_ref() {
+            "" => self.set_path(vec![]),
+            path => self.set_path(
+                path
+                    .split('/')
+                    .map(|segment| segment.as_bytes().to_vec())
+                    .collect::<Vec<Vec<u8>>>()
+            ),
         }
     }
 
-    pub fn set_query(&mut self, query: Option<&[u8]>) {
-        self.query = query.map(Into::into);
+    pub fn set_query<T>(&mut self, query: T)
+        where T: Into<Option<Vec<u8>>>
+    {
+        self.query = query.into();
     }
 
-    pub fn set_scheme<T>(&mut self, scheme: Option<T>) -> Result<(), Error>
-        where String: From<T>
+    pub fn set_scheme<T>(&mut self, scheme: T) -> Result<(), Error>
+        where T: Into<Option<String>>
     {
-        let scheme: Option<String> = scheme.map(Into::into);
-        if let Some(scheme) = &scheme {
-            Self::check_scheme(scheme)?;
-        }
-        self.scheme = scheme;
+        self.scheme = match scheme.into() {
+            Some(scheme) => {
+                Self::check_scheme(&scheme)?;
+                Some(scheme)
+            }
+            None => None,
+        };
         Ok(())
     }
 
@@ -2135,7 +2146,7 @@ mod tests {
         ];
         for test_vector in test_vectors {
             let mut uri = Uri::default();
-            assert!(uri.set_scheme(*test_vector.scheme()).is_ok());
+            assert!(uri.set_scheme(test_vector.scheme().map(ToString::to_string)).is_ok());
             #[allow(unused_parens)]
             if (
                 test_vector.userinfo().is_some()
@@ -2143,7 +2154,7 @@ mod tests {
                 || test_vector.port().is_some()
             ) {
                 let mut authority = Authority::default();
-                authority.set_userinfo(*test_vector.userinfo());
+                authority.set_userinfo(test_vector.userinfo().map(Into::into));
                 authority.set_host(test_vector.host().unwrap_or_else(|| &b""[..]));
                 authority.set_port(*test_vector.port());
                 uri.set_authority(Some(authority));
@@ -2151,8 +2162,8 @@ mod tests {
                 uri.set_authority(None);
             }
             uri.set_path_from_str(test_vector.path());
-            uri.set_query(*test_vector.query());
-            uri.set_fragment(*test_vector.fragment());
+            uri.set_query(test_vector.query().map(Into::into));
+            uri.set_fragment(test_vector.fragment().map(Into::into));
             assert_eq!(
                 *test_vector.expected_uri_string(),
                 uri.to_string()
@@ -2175,7 +2186,7 @@ mod tests {
         assert!(uri.is_ok());
         let mut uri = uri.unwrap();
         assert_eq!(None, uri.fragment());
-        uri.set_fragment(Some(&b""[..]));
+        uri.set_fragment(Some(vec![]));
         assert_eq!(Some(&b""[..]), uri.fragment());
         assert_eq!(uri.to_string(), "http://example.com/#");
     }
@@ -2195,7 +2206,7 @@ mod tests {
         assert!(uri.is_ok());
         let mut uri = uri.unwrap();
         assert_eq!(None, uri.query());
-        uri.set_query(Some(&b""[..]));
+        uri.set_query(Some(vec![]));
         assert_eq!(Some(&b""[..]), uri.query());
         assert_eq!(uri.to_string(), "http://example.com/?");
     }
@@ -2204,8 +2215,8 @@ mod tests {
     fn make_a_copy() {
         let mut uri1 = Uri::parse("http://www.example.com/foo.txt").unwrap();
         let mut uri2 = uri1.clone();
-        uri1.set_query(Some(&b"bar"[..]));
-        uri2.set_fragment(Some(&b"page2"[..]));
+        uri1.set_query(Some(b"bar".to_vec()));
+        uri2.set_fragment(Some(b"page2".to_vec()));
         let mut uri2_new_auth = uri2.authority().unwrap().clone();
         uri2_new_auth.set_host("example.com");
         uri2.set_authority(Some(uri2_new_auth));
@@ -2231,7 +2242,7 @@ mod tests {
         // To avoid issues with these web services, make sure '+' is
         // percent-encoded in a URI when the URI is encoded.
         let mut uri = Uri::default();
-        uri.set_query(Some(&b"foo+bar"[..]));
+        uri.set_query(Some(b"foo+bar".to_vec()));
         assert_eq!(uri.to_string(), "?foo%2Bbar");
     }
 
@@ -2247,7 +2258,7 @@ mod tests {
         ];
         for test_vector in &test_vectors {
             let mut uri = Uri::default();
-            assert!(uri.set_scheme(Some(*test_vector)).is_err());
+            assert!(uri.set_scheme(Some((*test_vector).to_string())).is_err());
         }
     }
 
