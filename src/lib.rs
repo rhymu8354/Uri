@@ -590,15 +590,17 @@ impl Uri {
         }
     }
 
-    // TODO: look into making element type more flexible
-    fn decode_element(
-        element: &str,
+    fn decode_element<T>(
+        element: T,
         allowed_characters: &'static HashSet<char>,
         context: Context
-    ) -> Result<Vec<u8>, Error> {
+    ) -> Result<Vec<u8>, Error>
+        where T: AsRef<str>
+    {
         let mut decoding_pec = false;
         let mut pec_decoder = PercentEncodedCharacterDecoder::new();
         element
+            .as_ref()
             .chars()
             .filter_map(|c| {
                 if decoding_pec {
