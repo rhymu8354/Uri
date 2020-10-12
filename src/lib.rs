@@ -946,20 +946,11 @@ impl Uri {
             "" => {
             },
 
-            mut path_string => {
-                // TODO: Try out this improvement:
-                // [15:49] silen_z: path_string.split('/').collect()
-                loop {
-                    if let Some(path_delimiter) = path_string.find('/') {
-                        path_encoded.push(
-                            path_string[0..path_delimiter].to_string()
-                        );
-                        path_string = &path_string[path_delimiter+1..];
-                    } else {
-                        path_encoded.push(path_string.to_string());
-                        break;
-                    }
-                }
+            path_string => {
+                path_encoded = path_string
+                    .split('/')
+                    .map(String::from)
+                    .collect()
             }
         }
         path_encoded.into_iter().map(
