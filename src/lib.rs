@@ -934,35 +934,33 @@ impl Uri {
     }
 
     fn parse_path(path_string: &str) -> Result<Vec<Vec<u8>>, Error> {
-        // TODO: improvement: make an iterator and only collect at the end.
-        let mut path_encoded = Vec::<String>::new();
         match path_string {
             "/" => {
-                // Special case of a path that is empty but needs a single
-                // empty-string element to indicate that it is absolute.
-                path_encoded.push("".to_string());
+                // Special case of an empty absolute path, which we want to
+                // represent as single empty-string element to indicate that it
+                // is absolute.
+                Ok(vec![vec![]])
             },
 
             "" => {
+                // Special case of an empty relative path, which we want to
+                // represent as an empty vector.
+                Ok(vec![])
             },
 
             path_string => {
-                path_encoded = path_string
+                path_string
                     .split('/')
-                    .map(String::from)
+                    .map(|segment| {
+                        Self::decode_element(
+                            &segment,
+                            &PCHAR_NOT_PCT_ENCODED,
+                            Context::Path
+                        )
+                    })
                     .collect()
             }
         }
-        path_encoded.into_iter().map(
-            |segment| {
-                Self::decode_element(
-                    &segment,
-                    &PCHAR_NOT_PCT_ENCODED,
-                    Context::Path
-                )
-            }
-        )
-            .collect::<Result<Vec<Vec<u8>>, Error>>()
     }
 
     fn parse_query(query_and_or_fragment: &str) -> Result<Option<Vec<u8>>, Error> {
