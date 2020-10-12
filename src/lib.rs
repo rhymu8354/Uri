@@ -17,7 +17,7 @@ use std::convert::TryFrom;
 // This is the character set containing just the alphabetic characters
 // from the ASCII character set.
 //
-// TODO: improvement
+// TODO: consider improvement
 // [14:49] silmeth: @rhymu8354 you might want to look at once_cell as a nicer
 // macro-less replacement for lazystatic!()
 lazy_static! {
@@ -271,10 +271,7 @@ fn validate_ipv4_address(address: &str) -> Result<(), Error> {
     let mut num_groups = 0;
     let mut state = State::NotInOctet;
     let mut octet_buffer = String::new();
-    // TODO: consider improvements
-    //
-    // [15:29] silen_z: one cool thing you could consider using (even in
-    // the previous function) is matching on tuple of (state, character)
+    // TODO: consider improvement
     //
     // Validation of the octet_buffer is done in two places; consider
     // how to remove the redundant code.
@@ -291,8 +288,6 @@ fn validate_ipv4_address(address: &str) -> Result<(), Error> {
 
             State::ExpectDigitOrDot if c == '.' => {
                 num_groups += 1;
-                // TODO: explore combining these two "if" statements or
-                // expressing them in a better way.
                 if num_groups > 4 {
                     return Err(Error::TooManyAddressParts);
                 }
