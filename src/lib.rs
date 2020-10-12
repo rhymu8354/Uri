@@ -1241,9 +1241,6 @@ impl std::fmt::Display for Uri {
     }
 }
 
-// TODO: Numerous tests use `Uri::path` when it would be easier to read if they
-// used `Uri::path_as_string` instead.
-
 #[cfg(test)]
 mod tests {
 
@@ -1256,7 +1253,6 @@ mod tests {
         let uri = uri.unwrap();
         assert_eq!(None, uri.scheme());
         assert_eq!("foo/bar", uri.path_as_string().unwrap());
-        assert_eq!(uri.path_as_string().unwrap(), "foo/bar");
     }
 
     #[test]
@@ -1266,7 +1262,7 @@ mod tests {
         let uri = uri.unwrap();
         assert_eq!(Some("http"), uri.scheme());
         assert_eq!(Some(&b"www.example.com"[..]), uri.host());
-        assert_eq!(uri.path(), &[&b""[..], &b"foo"[..], &b"bar"[..]].to_vec());
+        assert_eq!(uri.path_as_string().unwrap(), "/foo/bar");
     }
 
     #[test]
@@ -1276,7 +1272,7 @@ mod tests {
         let uri = uri.unwrap();
         assert_eq!(Some("urn"), uri.scheme());
         assert_eq!(None, uri.host());
-        assert_eq!(uri.path(), &[&b"book:fantasy:Hobbit"[..]].to_vec());
+        assert_eq!(uri.path_as_string().unwrap(), "book:fantasy:Hobbit");
     }
 
     #[test]
@@ -1297,7 +1293,7 @@ mod tests {
             let uri = Uri::parse(test_vector.path_in());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
-            assert_eq!(uri.path(), test_vector.path_out());
+            assert_eq!(test_vector.path_out(), uri.path());
         }
     }
 
@@ -1718,8 +1714,7 @@ mod tests {
             let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
-            let path = uri.path().clone();
-            assert_eq!(*test_vector.path(), path);
+            assert_eq!(test_vector.path(), uri.path());
         }
     }
 
@@ -1858,8 +1853,10 @@ mod tests {
             let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
-            let segment = uri.path().first().unwrap().clone();
-            assert_eq!(segment, *test_vector.path_first_segment());
+            assert_eq!(
+                test_vector.path_first_segment(),
+                uri.path().first().unwrap()
+            );
         }
     }
 
