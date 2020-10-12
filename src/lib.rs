@@ -1015,12 +1015,15 @@ impl Uri {
 
     #[must_use = "we went through all that trouble to put the path into a string, and you don't want it?"]
     pub fn path_as_string(&self) -> Result<String, Error> {
-        Ok(
-            String::from_utf8(
-                self.path
-                    .join(&b"/"[..])
-            )?
-        )
+        match &*self.path {
+            [segment] if segment.is_empty() => Ok("/".to_string()),
+            path => Ok(
+                String::from_utf8(
+                    path
+                        .join(&b"/"[..])
+                )?
+            ),
+        }
     }
 
     #[must_use = "why did you get the port number and then throw it away?"]
@@ -1855,60 +1858,68 @@ mod tests {
         }
     }
 
-    // TODO: Fix this test
-    // #[test]
-    // fn normalize_path() {
-    //     struct TestVector {
-    //         uri_string: &'static str,
-    //         normalized_path_segments: &'static [&'static [u8]],
-    //     };
-    //     let test_vectors = [
-    //         TestVector{ uri_string: "/a/b/c/./../../g", normalized_path_segments: &["a", "g"] },
-    //         TestVector{ uri_string: "mid/content=5/../6", normalized_path_segments: &["mid", "6"] },
-    //         TestVector{ uri_string: "http://example.com/a/../b", normalized_path_segments: &["b"] },
-    //         TestVector{ uri_string: "http://example.com/../b", normalized_path_segments: &["b"] },
-    //         TestVector{ uri_string: "http://example.com/a/../b/", normalized_path_segments: &["b", ""] },
-    //         TestVector{ uri_string: "http://example.com/a/../../b", normalized_path_segments: &["b"] },
-    //         TestVector{ uri_string: "./a/b", normalized_path_segments: &["a", "b"] },
-    //         TestVector{ uri_string: "..", normalized_path_segments: &[""] },
-    //         TestVector{ uri_string: "/", normalized_path_segments: &[""]},
-    //         TestVector{ uri_string: "a/b/..", normalized_path_segments: &["a", ""] },
-    //         TestVector{ uri_string: "a/b/.", normalized_path_segments: &["a", "b", ""] },
-    //         TestVector{ uri_string: "a/b/./c", normalized_path_segments: &["a", "b", "c"] },
-    //         TestVector{ uri_string: "a/b/./c/", normalized_path_segments: &["a", "b", "c", ""] },
-    //         TestVector{ uri_string: "/a/b/..", normalized_path_segments: &["a", ""]},
-    //         TestVector{ uri_string: "/a/b/.", normalized_path_segments: &["a", "b", ""]},
-    //         TestVector{ uri_string: "/a/b/./c", normalized_path_segments: &["a", "b", "c"]},
-    //         TestVector{ uri_string: "/a/b/./c/", normalized_path_segments: &["a", "b", "c", ""]},
-    //         TestVector{ uri_string: "./a/b/..", normalized_path_segments: &["a", ""] },
-    //         TestVector{ uri_string: "./a/b/.", normalized_path_segments: &["a", "b", ""] },
-    //         TestVector{ uri_string: "./a/b/./c", normalized_path_segments: &["a", "b", "c"] },
-    //         TestVector{ uri_string: "./a/b/./c/", normalized_path_segments: &["a", "b", "c", ""] },
-    //         TestVector{ uri_string: "../a/b/..", normalized_path_segments: &["a", ""] },
-    //         TestVector{ uri_string: "../a/b/.", normalized_path_segments: &["a", "b", ""] },
-    //         TestVector{ uri_string: "../a/b/./c", normalized_path_segments: &["a", "b", "c"] },
-    //         TestVector{ uri_string: "../a/b/./c/", normalized_path_segments: &["a", "b", "c", ""] },
-    //         TestVector{ uri_string: "../a/b/../c", normalized_path_segments: &["a", "c"] },
-    //         TestVector{ uri_string: "../a/b/./../c/", normalized_path_segments: &["a", "c", ""] },
-    //         TestVector{ uri_string: "../a/b/./../c", normalized_path_segments: &["a", "c"] },
-    //         TestVector{ uri_string: "../a/b/./../c/", normalized_path_segments: &["a", "c", ""] },
-    //         TestVector{ uri_string: "../a/b/.././c/", normalized_path_segments: &["a", "c", ""] },
-    //         TestVector{ uri_string: "../a/b/.././c", normalized_path_segments: &["a", "c"] },
-    //         TestVector{ uri_string: "../a/b/.././c/", normalized_path_segments: &["a", "c", ""] },
-    //         TestVector{ uri_string: "/./c/d", normalized_path_segments: &["c", "d"]},
-    //         TestVector{ uri_string: "/../c/d", normalized_path_segments: &["c", "d"]},
-    //     ];
-    //     for test_vector in test_vectors.iter() {
-    //         let uri = Uri::parse(test_vector.uri_string);
-    //         assert!(uri.is_ok());
-    //         let uri = uri.unwrap();
-    //         uri.normalize_path();
-    //         assert_eq!(
-    //             test_vector.normalized_path_segments,
-    //             uri.path()
-    //         );
-    //     }
-    // }
+    #[test]
+    fn normalize_path() {
+        named_tuple!(
+            struct TestVector {
+                uri_string: &'static str,
+                normalized_path: &'static str,
+            }
+        );
+        let test_vectors: &[TestVector] = &[
+            ("/a/b/c/./../../g", "/a/g").into(),
+            ("mid/content=5/../6", "mid/6").into(),
+            ("http://example.com/a/../b", "/b").into(),
+            ("http://example.com/../b", "/b").into(),
+            ("http://example.com/a/../b/", "/b/").into(),
+            ("http://example.com/a/../../b", "/b").into(),
+            ("./a/b", "a/b").into(),
+            ("", "").into(),
+            (".", "").into(),
+            ("./", "").into(),
+            ("..", "").into(),
+            ("../", "").into(),
+            ("/", "/").into(),
+            ("a/b/..", "a/").into(),
+            ("a/b/../", "a/").into(),
+            ("a/b/.", "a/b/").into(),
+            ("a/b/./", "a/b/").into(),
+            ("a/b/./c", "a/b/c").into(),
+            ("a/b/./c/", "a/b/c/").into(),
+            ("/a/b/..", "/a/").into(),
+            ("/a/b/.", "/a/b/").into(),
+            ("/a/b/./c", "/a/b/c").into(),
+            ("/a/b/./c/", "/a/b/c/").into(),
+            ("./a/b/..", "a/").into(),
+            ("./a/b/.", "a/b/").into(),
+            ("./a/b/./c", "a/b/c").into(),
+            ("./a/b/./c/", "a/b/c/").into(),
+            ("../a/b/..", "a/").into(),
+            ("../a/b/.", "a/b/").into(),
+            ("../a/b/./c", "a/b/c").into(),
+            ("../a/b/./c/", "a/b/c/").into(),
+            ("../a/b/../c", "a/c").into(),
+            ("../a/b/./../c/", "a/c/").into(),
+            ("../a/b/./../c", "a/c").into(),
+            ("../a/b/./../c/", "a/c/").into(),
+            ("../a/b/.././c/", "a/c/").into(),
+            ("../a/b/.././c", "a/c").into(),
+            ("../a/b/.././c/", "a/c/").into(),
+            ("/./c/d", "/c/d").into(),
+            ("/../c/d", "/c/d").into(),
+        ];
+        for test_vector in test_vectors.iter() {
+            let uri = Uri::parse(test_vector.uri_string());
+            assert!(uri.is_ok());
+            let mut uri = uri.unwrap();
+            uri.normalize();
+            assert_eq!(
+                *test_vector.normalized_path(),
+                uri.path_as_string().unwrap(),
+                "{}", test_vector.uri_string()
+            );
+        }
+    }
 
     #[test]
     fn construct_normalize_and_compare_equivalent_uris() {
