@@ -263,7 +263,9 @@ fn encode_element(
 }
 
 
-fn validate_ipv4_address(address: &str) -> Result<(), Error> {
+fn validate_ipv4_address<T>(address: T) -> Result<(), Error>
+    where T: AsRef<str>
+{
     #[derive(PartialEq)]
     enum State {
         NotInOctet,
@@ -276,7 +278,7 @@ fn validate_ipv4_address(address: &str) -> Result<(), Error> {
     //
     // Validation of the octet_buffer is done in two places; consider
     // how to remove the redundant code.
-    for c in address.chars() {
+    for c in address.as_ref().chars() {
         state = match state {
             State::NotInOctet if DIGIT.contains(&c) => {
                 octet_buffer.push(c);
@@ -328,7 +330,9 @@ fn validate_ipv4_address(address: &str) -> Result<(), Error> {
 // TODO: Clippy correctly advises us that this function needs refactoring
 // because it has too many lines.  We'll get back to that.
 #[allow(clippy::too_many_lines)]
-fn validate_ipv6_address(address: &str) -> Result<(), Error> {
+fn validate_ipv6_address<T>(address: T) -> Result<(), Error>
+    where T: AsRef<str>
+{
     #[derive(PartialEq)]
     enum ValidationState {
         NoGroupsYet,
@@ -344,6 +348,7 @@ fn validate_ipv6_address(address: &str) -> Result<(), Error> {
     let mut double_colon_encountered = false;
     let mut potential_ipv4_address_start = 0;
     let mut ipv4_address_encountered = false;
+    let address = address.as_ref();
     for (i, c) in address.char_indices() {
         state = match state {
             ValidationState::NoGroupsYet => {
@@ -577,7 +582,10 @@ impl Uri {
         !Self::is_path_absolute(&self.path)
     }
 
-    fn can_navigate_path_up_one_level(path: &[Vec<u8>]) -> bool {
+    fn can_navigate_path_up_one_level<T>(path: T) -> bool
+        where T: AsRef<[Vec<u8>]>
+    {
+        let path = path.as_ref();
         match path.first() {
             // First segment empty means path has leading slash,
             // so we can only navigate up if there are two or more segments.
@@ -624,10 +632,12 @@ impl Uri {
             .collect()
     }
 
-    fn decode_query_or_fragment(
-        query_or_fragment: &str,
+    fn decode_query_or_fragment<T>(
+        query_or_fragment: T,
         context: Context,
-    ) -> Result<Vec<u8>, Error> {
+    ) -> Result<Vec<u8>, Error>
+        where T: AsRef<str>
+    {
         Self::decode_element(
             query_or_fragment,
             &QUERY_OR_FRAGMENT_NOT_PCT_ENCODED,
@@ -647,8 +657,10 @@ impl Uri {
             .map(Authority::host)
     }
 
-    fn is_path_absolute(path: &[Vec<u8>]) -> bool {
-        match path {
+    fn is_path_absolute<T>(path: T) -> bool
+        where T: AsRef<[Vec<u8>]>
+    {
+        match path.as_ref() {
             [segment, ..] if segment.is_empty() => true,
             _ => false
         }
@@ -667,7 +679,9 @@ impl Uri {
     // in RFC 3986 (https://tools.ietf.org/html/rfc3986) to the path
     // segments of the URI, in order to normalize the path
     // (apply and remove "." and ".." segments).
-    fn normalize_path(original_path: &[Vec<u8>]) -> Vec<Vec<u8>> {
+    fn normalize_path<T>(original_path: T) -> Vec<Vec<u8>>
+        where T: AsRef<[Vec<u8>]>
+    {
         // Rebuild the path one segment
         // at a time, removing and applying special
         // navigation segments ("." and "..") as we go.
@@ -679,7 +693,7 @@ impl Uri {
         // empty segments.  Conclusion: We should refactor this.
         let mut at_directory_level = false;
         let mut normalized_path = Vec::new();
-        for segment in original_path {
+        for segment in original_path.as_ref() {
             if segment == b"." {
                 at_directory_level = true;
             } else if segment == b".." {
@@ -716,8 +730,10 @@ impl Uri {
         normalized_path
     }
 
-    pub fn parse(uri_string: &str) -> Result<Uri, Error> {
-        let (scheme, rest) = Self::parse_scheme(uri_string)?;
+    pub fn parse<T>(uri_string: T) -> Result<Uri, Error>
+        where T: AsRef<str>
+    {
+        let (scheme, rest) = Self::parse_scheme(uri_string.as_ref())?;
         let path_end = rest
             .find(&['?', '#'][..])
             .unwrap_or_else(|| rest.len());
@@ -737,7 +753,9 @@ impl Uri {
 
     // TODO: Needs refactoring, as Clippy dutifully told us.
     #[allow(clippy::too_many_lines)]
-    fn parse_authority(authority_string: &str) -> Result<Authority, Error> {
+    fn parse_authority<T>(authority_string: T) -> Result<Authority, Error>
+        where T: AsRef<str>
+    {
         // These are the various states for the state machine implemented
         // below to correctly split up and validate the URI substring
         // containing the host and potentially a port number as well.
@@ -753,6 +771,7 @@ impl Uri {
         };
 
         // First, check if there is a UserInfo, and if so, extract it.
+        let authority_string = authority_string.as_ref();
         let (userinfo, mut host_port_string) = match authority_string.find('@') {
             Some(user_info_delimiter) => (
                 Some(
@@ -915,8 +934,10 @@ impl Uri {
         }
     }
 
-    fn parse_path(path_string: &str) -> Result<Vec<Vec<u8>>, Error> {
-        match path_string {
+    fn parse_path<T>(path_string: T) -> Result<Vec<Vec<u8>>, Error>
+        where T: AsRef<str>
+    {
+        match path_string.as_ref() {
             "/" => {
                 // Special case of an empty absolute path, which we want to
                 // represent as single empty-string element to indicate that it
@@ -945,7 +966,10 @@ impl Uri {
         }
     }
 
-    fn parse_query(query_and_or_fragment: &str) -> Result<Option<Vec<u8>>, Error> {
+    fn parse_query<T>(query_and_or_fragment: T) -> Result<Option<Vec<u8>>, Error>
+        where T: AsRef<str>
+    {
+        let query_and_or_fragment = query_and_or_fragment.as_ref();
         if query_and_or_fragment.is_empty() {
             Ok(None)
         } else {
@@ -1106,7 +1130,10 @@ impl Uri {
         self.path = path.map(std::borrow::ToOwned::to_owned).collect();
     }
 
-    pub fn set_path_from_str<'a>(&mut self, path: &'a str) {
+    pub fn set_path_from_str<'a, T>(&mut self, path: T)
+        where T: AsRef<str> + 'a
+    {
+        let path = path.as_ref();
         if path.is_empty() {
             self.set_path(std::iter::empty());
         } else {
@@ -1131,10 +1158,13 @@ impl Uri {
         Ok(())
     }
 
-    fn split_authority_from_path_and_parse_them(
-        authority_and_path_string: &str
-    ) -> Result<(Option<Authority>, Vec<Vec<u8>>), Error> {
+    fn split_authority_from_path_and_parse_them<T>(
+        authority_and_path_string: T
+    ) -> Result<(Option<Authority>, Vec<Vec<u8>>), Error>
+        where T: AsRef<str>
+    {
         // Split authority from path.  If there is an authority, parse it.
+        let authority_and_path_string = authority_and_path_string.as_ref();
         if authority_and_path_string.starts_with("//") {
             // Strip off authority marker.
             let authority_and_path_string = &authority_and_path_string[2..];
