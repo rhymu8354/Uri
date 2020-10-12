@@ -495,7 +495,7 @@ impl Authority {
     pub fn set_userinfo<T>(&mut self, userinfo: Option<T>)
         where Vec<u8>: From<T>
     {
-        self.userinfo = userinfo.map(|s| s.into());
+        self.userinfo = userinfo.map(Into::into);
     }
 
     pub fn set_host<T>(&mut self, host: T)
@@ -1117,7 +1117,7 @@ impl Uri {
     }
 
     pub fn set_fragment(&mut self, fragment: Option<&[u8]>) {
-        self.fragment = fragment.map(|f| f.into());
+        self.fragment = fragment.map(Into::into);
     }
 
     pub fn set_path<'a, T>(&mut self, path: T)
@@ -1137,13 +1137,13 @@ impl Uri {
     }
 
     pub fn set_query(&mut self, query: Option<&[u8]>) {
-        self.query = query.map(|q| q.into());
+        self.query = query.map(Into::into);
     }
 
     pub fn set_scheme<T>(&mut self, scheme: Option<T>) -> Result<(), Error>
         where String: From<T>
     {
-        let scheme: Option<String> = scheme.map(|s| s.into());
+        let scheme: Option<String> = scheme.map(Into::into);
         if let Some(scheme) = &scheme {
             Self::check_scheme(scheme)?;
         }
