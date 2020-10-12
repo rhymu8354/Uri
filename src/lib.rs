@@ -262,7 +262,6 @@ fn encode_element(
     encoded_element
 }
 
-
 fn validate_ipv4_address<T>(address: T) -> Result<(), Error>
     where T: AsRef<str>
 {
