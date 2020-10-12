@@ -18,6 +18,7 @@ use std::convert::TryFrom;
 // from the ASCII character set.
 //
 // TODO: consider improvement
+//
 // [14:49] silmeth: @rhymu8354 you might want to look at once_cell as a nicer
 // macro-less replacement for lazystatic!()
 lazy_static! {
@@ -553,22 +554,21 @@ impl Uri {
         if scheme.is_empty() {
             return Err(Error::EmptyScheme);
         }
-        // TODO: Improve on this by enumerating
-        //
-        // [16:20] everx80: you could enumerate() and then check the index,
-        // instead of having a bool flag?
-        let mut is_first_character = true;
-        for c in scheme.chars() {
-            let valid_characters: &HashSet<char> = if is_first_character {
-                &ALPHA
-            } else {
-                &SCHEME_NOT_FIRST
-            };
-            if !valid_characters.contains(&c) {
-                return Err(Error::IllegalCharacter(Context::Scheme));
-            }
-            is_first_character = false;
-        }
+        scheme
+            .chars()
+            .enumerate()
+            .try_fold((), |_, (i, c)| {
+                let valid_characters: &HashSet<char> = if i == 0 {
+                    &ALPHA
+                } else {
+                    &SCHEME_NOT_FIRST
+                };
+                if valid_characters.contains(&c) {
+                    Ok(())
+                } else {
+                    Err(Error::IllegalCharacter(Context::Scheme))
+                }
+            })?;
         Ok(scheme)
     }
 
