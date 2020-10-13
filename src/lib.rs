@@ -473,8 +473,8 @@ fn validate_ipv6_address<T>(address: T) -> Result<(), Error>
     match (double_colon_encountered, num_groups) {
         (true, n) if n <= 7 => Ok(()),
         (false, 8) => Ok(()),
-        (_, n) if n > 8 => Err(Error::TooManyAddressParts),
-        (_, _) => Err(Error::TooFewAddressParts),
+        (false, n) if n < 8 => Err(Error::TooFewAddressParts),
+        (_, _) => Err(Error::TooManyAddressParts),
     }
 }
 
@@ -2049,6 +2049,8 @@ mod tests {
             ("http://[::1]/", "::1").into(),
             ("http://[::ffff:1.2.3.4]/", "::ffff:1.2.3.4").into(),
             ("http://[2001:db8:85a3:8d3:1319:8a2e:370:7348]/", "2001:db8:85a3:8d3:1319:8a2e:370:7348").into(),
+            ("http://[2001:db8:85a3:8d3:1319:8a2e:370::]/", "2001:db8:85a3:8d3:1319:8a2e:370::").into(),
+            ("http://[2001:db8:85a3:8d3:1319:8a2e::1]/", "2001:db8:85a3:8d3:1319:8a2e::1").into(),
             ("http://[fFfF::1]", "fFfF::1").into(),
             ("http://[1234::1]", "1234::1").into(),
             ("http://[fFfF:1:2:3:4:5:6:a]", "fFfF:1:2:3:4:5:6:a").into(),
@@ -2087,6 +2089,7 @@ mod tests {
             ("http://[::ffff:1.2.3.4/", Error::TruncatedHost).into(),
             ("http://[2001:db8:85a3:8d3:1319:8a2e:370:7348:0000]/", Error::TooManyAddressParts).into(),
             ("http://[2001:db8:85a3:8d3:1319:8a2e:370:7348::1]/", Error::TooManyAddressParts).into(),
+            ("http://[2001:db8:85a3:8d3:1319:8a2e:370::1]/", Error::TooManyAddressParts).into(),
             ("http://[2001:db8:85a3::8a2e:0:]/", Error::TruncatedHost).into(),
             ("http://[2001:db8:85a3::8a2e::]/", Error::TooManyDoubleColons).into(),
             ("http://[]/", Error::TooFewAddressParts).into(),
