@@ -274,10 +274,6 @@ fn validate_ipv4_address<T>(address: T) -> Result<(), Error>
     let mut num_groups = 0;
     let mut state = State::NotInOctet;
     let mut octet_buffer = String::new();
-    // TODO: consider improvement
-    //
-    // Validation of the octet_buffer is done in two places; consider
-    // how to remove the redundant code.
     for c in address.as_ref().chars() {
         state = match state {
             State::NotInOctet if DIGIT.contains(&c) => {
@@ -449,19 +445,17 @@ fn validate_ipv6_address<T>(address: T) -> Result<(), Error>
             },
         };
     }
-    #[allow(unused_parens)]
-    if (
+    if
         (state == ValidationState::InGroupNotIpv4)
         || (state == ValidationState::InGroupCouldBeIpv4)
-    ) {
+    {
         // count trailing group
         num_groups += 1;
     }
-    #[allow(unused_parens)]
-    if (
+    if
         (state == ValidationState::ColonButNoGroupsYet)
         || (state == ValidationState::ColonAfterGroup)
-    ) { // trailing single colon
+    { // trailing single colon
         return Err(Error::TruncatedHost);
     }
     if ipv4_address_encountered {
@@ -484,9 +478,6 @@ pub struct Authority {
 }
 
 impl Authority {
-    // TODO: explore possibly making this (and other setters) generic
-    // to support *anything* that can be converted implicitly from
-    // the type we use to store the information being retrieved.
     #[must_use = "why u no use host return value?"]
     pub fn host(&self) -> &[u8] {
         &self.host
@@ -708,11 +699,8 @@ impl Uri {
         // at a time, removing and applying special
         // navigation segments ("." and "..") as we go.
         //
-        // TODO: The `at_directory_level` variable's purpose
-        // is not very clear, and is a bit of a code smell.
-        // This probably has something to do with the fact that we
-        // represent leading and trailing '/' path separators using
-        // empty segments.  Conclusion: We should refactor this.
+        // The `at_directory_level` variable tracks whether or not
+        // the `normalized_path` refers to a directory.
         let mut at_directory_level = false;
         let mut normalized_path = Vec::new();
         for segment in original_path.as_ref() {
@@ -721,7 +709,10 @@ impl Uri {
             } else if segment == b".." {
                 // Remove last path element
                 // if we can navigate up a level.
-                if !normalized_path.is_empty() && Self::can_navigate_path_up_one_level(&normalized_path) {
+                if
+                    !normalized_path.is_empty()
+                    && Self::can_navigate_path_up_one_level(&normalized_path)
+                {
                     normalized_path.pop();
                 }
                 at_directory_level = true;
@@ -902,17 +893,11 @@ impl Uri {
                 },
             }
         }
-
-        // My normal coding style requires extra parentheses for conditionals
-        // having multiple parts broken up into different lines, but rust
-        // hates it.  Well, sorry rust, but we're going to do it anyway.
-        // FeelsUnusedParensMan
-        #[allow(unused_parens)]
-        if (
+        if
             (host_parsing_state != HostParsingState::NotIpLiteral)
             && (host_parsing_state != HostParsingState::GarbageCheck)
             && (host_parsing_state != HostParsingState::Port)
-        ) {
+        {
             // truncated or ended early
             return Err(Error::TruncatedHost);
         }
@@ -1259,11 +1244,10 @@ impl std::fmt::Display for Uri {
             write!(f, "//{}", authority)?;
         }
         // Special case: absolute but otherwise empty path.
-        #[allow(unused_parens)]
-        if (
+        if
             Self::is_path_absolute(&self.path)
             && self.path.len() == 1
-        ) {
+        {
             write!(f, "/")?;
         }
         for (i, segment) in self.path.iter().enumerate() {
@@ -2205,12 +2189,11 @@ mod tests {
         for test_vector in test_vectors {
             let mut uri = Uri::default();
             assert!(uri.set_scheme(test_vector.scheme().map(ToString::to_string)).is_ok());
-            #[allow(unused_parens)]
-            if (
+            if
                 test_vector.userinfo().is_some()
                 || test_vector.host().is_some()
                 || test_vector.port().is_some()
-            ) {
+            {
                 let mut authority = Authority::default();
                 authority.set_userinfo(test_vector.userinfo().map(Into::into));
                 authority.set_host(test_vector.host().unwrap_or_else(|| ""));
