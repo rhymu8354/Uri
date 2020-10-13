@@ -13,4 +13,7 @@ mod parse_host_port;
 mod percent_encoded_character_decoder;
 mod validate_ipv4_address;
 mod validate_ipv6_address;
-pub mod uri;
+mod uri;
+
+pub use crate::authority::Authority;
+pub use crate::uri::Uri;
