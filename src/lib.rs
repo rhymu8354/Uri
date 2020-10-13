@@ -1,4 +1,6 @@
 #![warn(clippy::pedantic)]
+#![allow(clippy::non_ascii_literal)]
+#![warn(missing_docs)]
 
 #[cfg(test)]
 #[macro_use]

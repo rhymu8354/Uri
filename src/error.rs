@@ -1,5 +1,3 @@
-#![warn(clippy::pedantic)]
-
 use super::context::Context;
 
 #[derive(Debug, Clone, thiserror::Error, PartialEq)]

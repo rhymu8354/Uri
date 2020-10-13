@@ -1,7 +1,3 @@
-#![warn(clippy::pedantic)]
-#![allow(clippy::missing_errors_doc)]
-#![allow(clippy::non_ascii_literal)]
-
 use std::collections::HashSet;
 
 use super::authority::Authority;

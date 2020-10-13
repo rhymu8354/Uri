@@ -1,5 +1,3 @@
-#![warn(clippy::pedantic)]
-
 use std::convert::TryFrom;
 
 use super::character_classes::{

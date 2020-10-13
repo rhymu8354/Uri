@@ -1,5 +1,3 @@
-#![warn(clippy::pedantic)]
-
 use super::character_classes::{
     REG_NAME_NOT_PCT_ENCODED,
     USER_INFO_NOT_PCT_ENCODED,

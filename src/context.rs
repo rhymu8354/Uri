@@ -1,5 +1,3 @@
-#![warn(clippy::pedantic)]
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Context {
     Fragment,

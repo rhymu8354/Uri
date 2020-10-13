@@ -1,5 +1,3 @@
-#![warn(clippy::pedantic)]
-
 use once_cell::sync::Lazy;
 use std::collections::HashSet;
 
