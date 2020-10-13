@@ -12,6 +12,73 @@ use super::character_classes::{
     QUERY_NOT_PCT_ENCODED_WITHOUT_PLUS,
 };
 
+/// This type is used to parse and generate URI strings to and from their
+/// various components.  Components are percent-encoded as necessary during
+/// generation, and percent encodings are decoded during parsing.
+///
+/// Since most URI components, once decoded, may include non-UTF8 byte
+/// sequences (which are always percent-encoded), getter methods such as
+/// [`path`] and [`query`] return byte array [slice] references (`&[u8]`)
+/// rather than string or string slice references.  Fallible convenience
+/// methods ending in `_as_string`, such as [`path_as_string`] and
+/// [`query_as_string`], are provided to convert these to strings.
+///
+/// The "Authority" part of the Uri is represented by the [`Authority` type].
+/// Although the `Uri` type provides [`userinfo`], [`host`], and [`port`]
+/// methods for convenience, `Uri` holds these components through the
+/// [`Authority` type], which can be accessed via [`authority`] and
+/// [`set_authority`].  To set or change the userinfo, host, or port of a
+/// `Uri`, construct a new `Authority` value and set it in the `Uri` with
+/// [`set_authority`].
+///
+/// # Examples
+///
+/// ## Parsing a URI into its components
+///
+/// ```rust
+/// # extern crate uri;
+/// use uri::Uri;
+///
+/// # fn test() -> Result<(), uri::Error> {
+/// let uri = Uri::parse("http://www.example.com/foo?bar#baz")?;
+/// let authority = uri.authority().unwrap();
+/// assert_eq!("www.example.com".as_bytes(), authority.host());
+/// assert_eq!(Some("www.example.com"), uri.host_as_string()?.as_deref());
+/// assert_eq!("/foo", uri.path_as_string()?);
+/// assert_eq!(Some("bar"), uri.query_as_string()?.as_deref());
+/// assert_eq!(Some("baz"), uri.fragment_as_string()?.as_deref());
+/// # Ok(())
+/// # }
+/// ```
+///
+/// ## Generating a URI from its components
+///
+/// ```rust
+/// # extern crate uri;
+/// use uri::{Authority, Uri};
+///
+/// let mut uri = Uri::default();
+/// assert!(uri.set_scheme(String::from("http")).is_ok());
+/// let mut authority = Authority::default();
+/// authority.set_host("www.example.com");
+/// uri.set_authority(Some(authority));
+/// uri.set_path_from_str("/foo");
+/// uri.set_query(Some("bar".into()));
+/// uri.set_fragment(Some("baz".into()));
+/// assert_eq!("http://www.example.com/foo?bar#baz", uri.to_string());
+/// ```
+///
+/// [`authority`]: #method.authority
+/// [`Authority` type]: struct.Authority.html
+/// [`host`]: #method.host
+/// [`path`]: #method.path
+/// [`path_as_string`]: #method.path_as_string
+/// [`port`]: #method.port
+/// [`query`]: #method.query
+/// [`query_as_string`]: #method.query_as_string
+/// [`set_authority`]: #method.set_authority
+/// [`userinfo`]: #method.userinfo
+/// [slice]: https://doc.rust-lang.org/std/primitive.slice.html
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Uri {
     scheme: Option<String>,
@@ -22,6 +89,7 @@ pub struct Uri {
 }
 
 impl Uri {
+    /// Borrow the authority (if any) of the URI.
     #[must_use = "respect mah authoritah"]
     pub fn authority(&self) -> Option<&Authority> {
         self.authority.as_ref()
@@ -67,6 +135,8 @@ impl Uri {
         Ok(scheme)
     }
 
+    /// Determines if the URI contains a relative path rather than an absolute
+    /// path.
     #[must_use = "please use the return value kthxbye"]
     pub fn contains_relative_path(&self) -> bool {
         !Self::is_path_absolute(&self.path)
@@ -85,11 +155,18 @@ impl Uri {
         )
     }
 
+    /// Borrow the fragment (if any) of the URI.
     #[must_use = "A query and a fragment walked into a bar.  Too bad you're ignoring the fragment because it's actually a funny joke."]
     pub fn fragment(&self) -> Option<&[u8]> {
         self.fragment.as_deref()
     }
 
+    /// Convert the fragment (if any) into a string.
+    ///
+    /// # Errors
+    ///
+    /// Since fragments may contain non-UTF8 byte sequences, this function may
+    /// return [`Error::CannotExpressAsUtf8`](enum.Error.html#variant.CannotExpressAsUtf8).
     #[must_use = "use the fragment return value silly programmer"]
     pub fn fragment_as_string(&self) -> Result<Option<String>, Error> {
         self.fragment()
@@ -100,6 +177,7 @@ impl Uri {
             .transpose()
     }
 
+    /// Borrow the host portion of the Authority (if any) of the URI.
     #[must_use = "why u no use host return value?"]
     pub fn host(&self) -> Option<&[u8]> {
         self.authority
@@ -107,6 +185,13 @@ impl Uri {
             .map(Authority::host)
     }
 
+    /// Convert the host portion of the Authority (if any) into a string.
+    ///
+    /// # Errors
+    ///
+    /// Since host names may contain non-UTF8 byte sequences, this function may
+    /// return
+    /// [`Error::CannotExpressAsUtf8`](enum.Error.html#variant.CannotExpressAsUtf8).
     #[must_use = "I made that host field into a string for you; don't you want it?"]
     pub fn host_as_string(&self) -> Result<Option<String>, Error> {
         self.host()
@@ -126,19 +211,38 @@ impl Uri {
         }
     }
 
+    /// Determines if the URI is a `relative-ref` (relative reference), as
+    /// defined in [RFC 3986 section
+    /// 4.2](https://tools.ietf.org/html/rfc3986#section-4.2).  A relative
+    /// reference has no scheme, but may still have an authority.
     #[must_use = "why would you call an accessor method and not use the return value, silly human"]
     pub fn is_relative_reference(&self) -> bool {
         self.scheme.is_none()
     }
 
+    /// Apply the `remove_dot_segments` routine talked about
+    /// in [RFC 3986 section
+    /// 5.2](https://tools.ietf.org/html/rfc3986#section-5.2) to the path
+    /// segments of the URI, in order to normalize the path (apply and remove
+    /// "." and ".." segments).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate uri;
+    /// use uri::Uri;
+    ///
+    /// # fn test() -> Result<(), uri::Error> {
+    /// let mut uri = Uri::parse("/a/b/c/./../../g")?;
+    /// uri.normalize();
+    /// assert_eq!("/a/g", uri.path_as_string()?);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn normalize(&mut self) {
         self.path = Self::normalize_path(&self.path);
     }
 
-    // This method applies the "remove_dot_segments" routine talked about
-    // in RFC 3986 (https://tools.ietf.org/html/rfc3986) to the path
-    // segments of the URI, in order to normalize the path
-    // (apply and remove "." and ".." segments).
     fn normalize_path<T>(original_path: T) -> Vec<Vec<u8>>
         where T: AsRef<[Vec<u8>]>
     {
@@ -190,6 +294,14 @@ impl Uri {
         normalized_path
     }
 
+    /// Interpret the given string as a URI, separating its various components,
+    /// returning a `Uri` value containing them.
+    ///
+    /// # Errors
+    ///
+    /// There are many ways to screw up a URI string, and this function will
+    /// let you know what's up by returning a variant of the
+    /// [`Error`](enum.Error.html) type.
     pub fn parse<T>(uri_string: T) -> Result<Self, Error>
         where T: AsRef<str>
     {
@@ -292,11 +404,43 @@ impl Uri {
         }
     }
 
+    /// Borrow the path component of the URI.
+    ///
+    /// The path is represented as a two-dimensional vector:
+    /// * the "segments" or pieces of the path between the slashes
+    /// * the bytes that make up each segment
+    ///
+    /// Byte vectors are used instead of strings because segments may contain
+    /// non-UTF8 sequences.
+    ///
+    /// Leading and trailing slashes in the path are special cases represented
+    /// by extra empty segments at the beginning and/or end of the path.
+    ///
+    /// # Examples
+    ///
+    /// (Note: the examples below show strings, not byte vectors, simply to be
+    /// more readable.)
+    ///
+    /// ```text
+    /// "foo/bar"   -> ["foo", "bar"]
+    /// "/foo/bar"  -> ["", "foo", "bar"]
+    /// "foo/bar/"  -> ["foo", "bar", ""]
+    /// "/foo/bar/" -> ["", "foo", "bar", ""]
+    /// "/"         -> [""]
+    /// ""          -> []
+    /// ```
     #[must_use = "you called path() to get the path, so why you no use?"]
     pub fn path(&self) -> &Vec<Vec<u8>> {
         &self.path
     }
 
+    /// Convert the path portion of the URI into a string.
+    ///
+    /// # Errors
+    ///
+    /// Since path segments may contain non-UTF8 byte sequences, this function
+    /// may return
+    /// [`Error::CannotExpressAsUtf8`](enum.Error.html#variant.CannotExpressAsUtf8).
     #[must_use = "we went through all that trouble to put the path into a string, and you don't want it?"]
     pub fn path_as_string(&self) -> Result<String, Error> {
         match &*self.path {
@@ -310,6 +454,7 @@ impl Uri {
         }
     }
 
+    /// Return a copy of the port (if any) contained in the URI.
     #[must_use = "why did you get the port number and then throw it away?"]
     pub fn port(&self) -> Option<u16> {
         if let Some(authority) = &self.authority {
@@ -319,11 +464,18 @@ impl Uri {
         }
     }
 
+    /// Borrow the query (if any) of the URI.
     #[must_use = "don't you want to know what that query was?"]
     pub fn query(&self) -> Option<&[u8]> {
         self.query.as_deref()
     }
 
+    /// Convert the query (if any) into a string.
+    ///
+    /// # Errors
+    ///
+    /// Since queries may contain non-UTF8 byte sequences, this function may
+    /// return [`Error::CannotExpressAsUtf8`](enum.Error.html#variant.CannotExpressAsUtf8).
     #[must_use = "use the query return value silly programmer"]
     pub fn query_as_string(&self) -> Result<Option<String>, Error> {
         self.query()
@@ -334,11 +486,26 @@ impl Uri {
             .transpose()
     }
 
+    /// Return a new URI which is the result of applying the given relative
+    /// reference to the URI, following the algorithm from [RFC 3986 section
+    /// 5.2.2](https://tools.ietf.org/html/rfc3986#section-5.2.2).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate uri;
+    /// use uri::Uri;
+    ///
+    /// # fn test() -> Result<(), uri::Error> {
+    /// let base = Uri::parse("http://a/b/c/d;p?q")?;
+    /// let relative_reference = Uri::parse("g;x?y#s")?;
+    /// let resolved = base.resolve(&relative_reference);
+    /// assert_eq!("http://a/b/c/g;x?y#s", resolved.path_as_string()?);
+    /// # Ok(())
+    /// # }
+    /// ```
     #[must_use = "why go through all that effort to resolve the URI, when you're not going to use it?!"]
     pub fn resolve(&self, relative_reference: &Self) -> Self {
-        // Resolve the reference by following the algorithm
-        // from section 5.2.2 in
-        // RFC 3986 (https://tools.ietf.org/html/rfc3986).
         let (scheme, authority, path, query) = if relative_reference.scheme.is_some() {
             (
                 relative_reference.scheme.clone(),
@@ -409,6 +576,7 @@ impl Uri {
         }
     }
 
+    /// Borrow the scheme (if any) component of the URI.
     #[must_use = "you wanted to use that scheme, right?"]
     pub fn scheme(&self) -> Option<&str> {
         // NOTE: This seemingly magic `as_deref` works because of two
@@ -421,24 +589,35 @@ impl Uri {
         self.scheme.as_deref()
     }
 
+    /// Change the authority of the URI.
     pub fn set_authority<T>(&mut self, authority: T)
         where T: Into<Option<Authority>>
     {
         self.authority = authority.into();
     }
 
+    /// Change the fragment of the URI.
     pub fn set_fragment<T>(&mut self, fragment: T)
         where T: Into<Option<Vec<u8>>>
     {
         self.fragment = fragment.into();
     }
 
+    /// Change the path of the URI.
+    ///
+    /// Note: See [`path`](#method.path) for special notes about what the
+    /// segments of the path mean.
     pub fn set_path<T>(&mut self, path: T)
         where T: Into<Vec<Vec<u8>>>
     {
         self.path = path.into();
     }
 
+    /// Change the path of the URI using a string which is split by its slash
+    /// (`/`) characters to determine the path segments.
+    ///
+    /// Note: See [`path`](#method.path) for special notes about what the
+    /// segments of the path mean.
     pub fn set_path_from_str<T>(&mut self, path: T)
         where T: AsRef<str>
     {
@@ -453,12 +632,20 @@ impl Uri {
         }
     }
 
+    /// Change the query of the URI.
     pub fn set_query<T>(&mut self, query: T)
         where T: Into<Option<Vec<u8>>>
     {
         self.query = query.into();
     }
 
+    /// Change the scheme of the URI.
+    ///
+    /// # Errors
+    ///
+    /// The set of characters allowed in the scheme of a URI is limited.
+    /// [`Error::IllegalCharacter`](enum.Error.html#variant.IllegalCharacter)
+    /// is returned if you try to use a character that isn't allowed.
     pub fn set_scheme<T>(&mut self, scheme: T) -> Result<(), Error>
         where T: Into<Option<String>>
     {
@@ -503,6 +690,11 @@ impl Uri {
         }
     }
 
+    /// Borrow the userinfo portion (if any) of the Authority (if any) of the
+    /// URI.
+    ///
+    /// Note that you can get `None` if there is either no Authority in the URI
+    /// or there is an Authority in the URI but it has no userinfo in it.
     #[must_use = "security breach... security breach... userinfo not used"]
     pub fn userinfo(&self) -> Option<&[u8]> {
         if let Some(authority) = &self.authority {
@@ -512,6 +704,12 @@ impl Uri {
         }
     }
 
+    /// Convert the fragment (if any) into a string.
+    ///
+    /// # Errors
+    ///
+    /// Since fragments may contain non-UTF8 byte sequences, this function may
+    /// return [`Error::CannotExpressAsUtf8`](enum.Error.html#variant.CannotExpressAsUtf8).
     #[must_use = "come on, you intended to use that userinfo return value, didn't you?"]
     pub fn userinfo_as_string(&self) -> Result<Option<String>, Error> {
         self.userinfo()
