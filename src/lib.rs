@@ -1,5 +1,6 @@
 #![warn(clippy::pedantic)]
 #![allow(clippy::missing_errors_doc)]
+#![allow(clippy::non_ascii_literal)]
 
 #[macro_use]
 extern crate lazy_static;
@@ -651,11 +652,31 @@ impl Uri {
         self.fragment.as_deref()
     }
 
+    #[must_use = "use the fragment return value silly programmer"]
+    pub fn fragment_as_string(&self) -> Result<Option<String>, Error> {
+        self.fragment()
+            .map(|fragment| {
+                String::from_utf8(fragment.to_vec())
+                    .map_err(Into::into)
+            })
+            .transpose()
+    }
+
     #[must_use = "why u no use host return value?"]
     pub fn host(&self) -> Option<&[u8]> {
         self.authority
             .as_ref()
             .map(Authority::host)
+    }
+
+    #[must_use = "I made that host field into a string for you; don't you want it?"]
+    pub fn host_as_string(&self) -> Result<Option<String>, Error> {
+        self.host()
+            .map(|host| {
+                String::from_utf8(host.to_vec())
+                    .map_err(Into::into)
+            })
+            .transpose()
     }
 
     fn is_path_absolute<T>(path: T) -> bool
@@ -1030,6 +1051,16 @@ impl Uri {
         self.query.as_deref()
     }
 
+    #[must_use = "use the query return value silly programmer"]
+    pub fn query_as_string(&self) -> Result<Option<String>, Error> {
+        self.query()
+            .map(|query| {
+                String::from_utf8(query.to_vec())
+                    .map_err(Into::into)
+            })
+            .transpose()
+    }
+
     #[must_use = "why go through all that effort to resolve the URI, when you're not going to use it?!"]
     pub fn resolve(&self, relative_reference: &Self) -> Self {
         // Resolve the reference by following the algorithm
@@ -1207,6 +1238,16 @@ impl Uri {
             None
         }
     }
+
+    #[must_use = "come on, you intended to use that userinfo return value, didn't you?"]
+    pub fn userinfo_as_string(&self) -> Result<Option<String>, Error> {
+        self.userinfo()
+            .map(|userinfo| {
+                String::from_utf8(userinfo.to_vec())
+                    .map_err(Into::into)
+            })
+            .transpose()
+    }
 }
 
 impl std::fmt::Display for Uri {
@@ -1252,6 +1293,7 @@ mod tests {
         assert!(uri.is_ok());
         let uri = uri.unwrap();
         assert_eq!(None, uri.scheme());
+        assert_eq!(&[&b"foo"[..], &b"bar"[..]].to_vec(), uri.path());
         assert_eq!("foo/bar", uri.path_as_string().unwrap());
     }
 
@@ -1262,6 +1304,7 @@ mod tests {
         let uri = uri.unwrap();
         assert_eq!(Some("http"), uri.scheme());
         assert_eq!(Some(&b"www.example.com"[..]), uri.host());
+        assert_eq!(Some("www.example.com"), uri.host_as_string().unwrap().as_deref());
         assert_eq!(uri.path_as_string().unwrap(), "/foo/bar");
     }
 
@@ -1302,7 +1345,7 @@ mod tests {
         let uri = Uri::parse("http://www.example.com:8080/foo/bar");
         assert!(uri.is_ok());
         let uri = uri.unwrap();
-        assert_eq!(Some(&b"www.example.com"[..]), uri.host());
+        assert_eq!(Some("www.example.com"), uri.host_as_string().unwrap().as_deref());
         assert_eq!(Some(8080), uri.port());
     }
 
@@ -1311,7 +1354,7 @@ mod tests {
         let uri = Uri::parse("http://www.example.com/foo/bar");
         assert!(uri.is_ok());
         let uri = uri.unwrap();
-        assert_eq!(Some(&b"www.example.com"[..]), uri.host());
+        assert_eq!(Some("www.example.com"), uri.host_as_string().unwrap().as_deref());
         assert_eq!(None, uri.port());
     }
 
@@ -1424,31 +1467,34 @@ mod tests {
         named_tuple!(
             struct TestVector {
                 uri_string: &'static str,
-                host: &'static [u8],
-                query: Option<&'static [u8]>,
-                fragment: Option<&'static [u8]>
+                host: &'static str,
+                query: Option<&'static str>,
+                fragment: Option<&'static str>
             }
         );
         let test_vectors: &[TestVector] = &[
-            ("http://www.example.com/", &b"www.example.com"[..], None, None).into(),
-            ("http://example.com?foo", &b"example.com"[..], Some(&b"foo"[..]), None).into(),
-            ("http://www.example.com#foo", &b"www.example.com"[..], None, Some(&b"foo"[..])).into(),
-            ("http://www.example.com?foo#bar", &b"www.example.com"[..], Some(&b"foo"[..]), Some(&b"bar"[..])).into(),
-            ("http://www.example.com?earth?day#bar", &b"www.example.com"[..], Some(&b"earth?day"[..]), Some(&b"bar"[..])).into(),
-            ("http://www.example.com/spam?foo#bar", &b"www.example.com"[..], Some(&b"foo"[..]), Some(&b"bar"[..])).into(),
-            ("http://www.example.com/?", &b"www.example.com"[..], Some(&b""[..]), None).into(),
+            ("http://www.example.com/", "www.example.com", None, None).into(),
+            ("http://example.com?foo", "example.com", Some("foo"), None).into(),
+            ("http://www.example.com#foo", "www.example.com", None, Some("foo")).into(),
+            ("http://www.example.com?foo#bar", "www.example.com", Some("foo"), Some("bar")).into(),
+            ("http://www.example.com?earth?day#bar", "www.example.com", Some("earth?day"), Some("bar")).into(),
+            ("http://www.example.com/spam?foo#bar", "www.example.com", Some("foo"), Some("bar")).into(),
+            ("http://www.example.com/?", "www.example.com", Some(""), None).into(),
         ];
         for (test_index, test_vector) in test_vectors.iter().enumerate() {
             let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
-            assert_eq!(Some(*test_vector.host()), uri.host());
+            assert_eq!(Some(*test_vector.host()), uri.host_as_string().unwrap().as_deref());
             assert_eq!(
                 *test_vector.query(),
-                uri.query(),
+                uri.query_as_string().unwrap().as_deref(),
                 "{}", test_index
             );
-            assert_eq!(*test_vector.fragment(), uri.fragment());
+            assert_eq!(
+                *test_vector.fragment(),
+                uri.fragment_as_string().unwrap().as_deref()
+            );
         }
     }
 
@@ -1457,15 +1503,15 @@ mod tests {
         named_tuple!(
             struct TestVector {
                 uri_string: &'static str,
-                userinfo: Option<&'static [u8]>,
+                userinfo: Option<&'static str>,
             }
         );
         let test_vectors: &[TestVector] = &[
             ("http://www.example.com/", None).into(),
-            ("http://joe@www.example.com", Some(&b"joe"[..])).into(),
-            ("http://pepe:feelsbadman@www.example.com", Some(&b"pepe:feelsbadman"[..])).into(),
+            ("http://joe@www.example.com", Some("joe")).into(),
+            ("http://pepe:feelsbadman@www.example.com", Some("pepe:feelsbadman")).into(),
             ("//www.example.com", None).into(),
-            ("//bob@www.example.com", Some(&b"bob"[..])).into(),
+            ("//bob@www.example.com", Some("bob")).into(),
             ("/", None).into(),
             ("foo", None).into(),
         ];
@@ -1473,7 +1519,10 @@ mod tests {
             let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
-            assert_eq!(*test_vector.userinfo(), uri.userinfo());
+            assert_eq!(
+                *test_vector.userinfo(),
+                uri.userinfo_as_string().unwrap().as_deref()
+            );
         }
     }
 
@@ -1561,23 +1610,26 @@ mod tests {
         named_tuple!(
             struct TestVector {
                 uri_string: &'static str,
-                userinfo: &'static [u8]
+                userinfo: &'static str
             }
         );
         let test_vectors: &[TestVector] = &[
-            ("//%41@www.example.com/", &b"A"[..]).into(),
-            ("//@www.example.com/", &b""[..]).into(),
-            ("//!@www.example.com/", &b"!"[..]).into(),
-            ("//'@www.example.com/", &b"'"[..]).into(),
-            ("//(@www.example.com/", &b"("[..]).into(),
-            ("//;@www.example.com/", &b";"[..]).into(),
-            ("http://:@www.example.com/", &b":"[..]).into(),
+            ("//%41@www.example.com/", "A").into(),
+            ("//@www.example.com/", "").into(),
+            ("//!@www.example.com/", "!").into(),
+            ("//'@www.example.com/", "'").into(),
+            ("//(@www.example.com/", "(").into(),
+            ("//;@www.example.com/", ";").into(),
+            ("http://:@www.example.com/", ":").into(),
         ];
         for test_vector in test_vectors {
             let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
-            assert_eq!(Some(*test_vector.userinfo()), uri.userinfo());
+            assert_eq!(
+                Some(*test_vector.userinfo()),
+                uri.userinfo_as_string().unwrap().as_deref()
+            );
         }
     }
 
@@ -1599,25 +1651,25 @@ mod tests {
         named_tuple!(
             struct TestVector {
                 uri_string: &'static str,
-                host: &'static [u8]
+                host: &'static str
             }
         );
         let test_vectors: &[TestVector] = &[
-            ("//%41/", &b"a"[..]).into(),
-            ("///", &b""[..]).into(),
-            ("//!/", &b"!"[..]).into(),
-            ("//'/", &b"'"[..]).into(),
-            ("//(/", &b"("[..]).into(),
-            ("//;/", &b";"[..]).into(),
-            ("//1.2.3.4/", &b"1.2.3.4"[..]).into(),
-            ("//[v7.:]/", &b"v7.:"[..]).into(),
-            ("//[v7.aB]/", &b"v7.aB"[..]).into(),
+            ("//%41/", "a").into(),
+            ("///", "").into(),
+            ("//!/", "!").into(),
+            ("//'/", "'").into(),
+            ("//(/", "(").into(),
+            ("//;/", ";").into(),
+            ("//1.2.3.4/", "1.2.3.4").into(),
+            ("//[v7.:]/", "v7.:").into(),
+            ("//[v7.aB]/", "v7.aB").into(),
         ];
         for test_vector in test_vectors {
             let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
-            assert_eq!(Some(*test_vector.host()), uri.host());
+            assert_eq!(Some(*test_vector.host()), uri.host_as_string().unwrap().as_deref());
         }
     }
 
@@ -1630,12 +1682,15 @@ mod tests {
             "http://www.example.cOM/",
             "http://wWw.exampLe.Com/",
         ];
-        let normalized_host = &b"www.example.com"[..];
+        let normalized_host = "www.example.com";
         for test_vector in &test_vectors {
             let uri = Uri::parse(*test_vector);
             assert!(uri.is_ok());
             let uri = uri.unwrap();
-            assert_eq!(Some(normalized_host), uri.host());
+            assert_eq!(
+                Some(normalized_host),
+                uri.host_as_string().unwrap().as_deref()
+            );
         }
     }
 
@@ -1644,7 +1699,7 @@ mod tests {
         let uri = Uri::parse("http://example.com./foo");
         assert!(uri.is_ok());
         let uri = uri.unwrap();
-        assert_eq!(Some(&b"example.com."[..]), uri.host());
+        assert_eq!(Some("example.com."), uri.host_as_string().unwrap().as_deref());
     }
 
     #[test]
@@ -1753,16 +1808,16 @@ mod tests {
         named_tuple!(
             struct TestVector {
                 uri_string: &'static str,
-                query: &'static [u8]
+                query: &'static str
             }
         );
         let test_vectors: &[TestVector] = &[
-            ("/?:/foo", &b":/foo"[..]).into(),
-            ("?bob@/foo", &b"bob@/foo"[..]).into(),
-            ("?hello!", &b"hello!"[..]).into(),
-            ("urn:?hello,%20w%6Frld", &b"hello, world"[..]).into(),
-            ("//example.com/foo?(bar)/", &b"(bar)/"[..]).into(),
-            ("http://www.example.com/?foo?bar", &b"foo?bar"[..]).into(),
+            ("/?:/foo", ":/foo").into(),
+            ("?bob@/foo", "bob@/foo").into(),
+            ("?hello!", "hello!").into(),
+            ("urn:?hello,%20w%6Frld", "hello, world").into(),
+            ("//example.com/foo?(bar)/", "(bar)/").into(),
+            ("http://www.example.com/?foo?bar", "foo?bar").into(),
         ];
         for (test_index, test_vector) in test_vectors.iter().enumerate() {
             let uri = Uri::parse(test_vector.uri_string());
@@ -1770,7 +1825,7 @@ mod tests {
             let uri = uri.unwrap();
             assert_eq!(
                 Some(*test_vector.query()),
-                uri.query(),
+                uri.query_as_string().unwrap().as_deref(),
                 "{}", test_index
             );
         }
@@ -1811,22 +1866,25 @@ mod tests {
         named_tuple!(
             struct TestVector {
                 uri_string: &'static str,
-                fragment: &'static [u8]
+                fragment: &'static str
             }
         );
         let test_vectors: &[TestVector] = &[
-            ("/#:/foo", &b":/foo"[..]).into(),
-            ("#bob@/foo", &b"bob@/foo"[..]).into(),
-            ("#hello!", &b"hello!"[..]).into(),
-            ("urn:#hello,%20w%6Frld", &b"hello, world"[..]).into(),
-            ("//example.com/foo#(bar)/", &b"(bar)/"[..]).into(),
-            ("http://www.example.com/#foo?bar", &b"foo?bar"[..]).into(),
+            ("/#:/foo", ":/foo").into(),
+            ("#bob@/foo", "bob@/foo").into(),
+            ("#hello!", "hello!").into(),
+            ("urn:#hello,%20w%6Frld", "hello, world").into(),
+            ("//example.com/foo#(bar)/", "(bar)/").into(),
+            ("http://www.example.com/#foo?bar", "foo?bar").into(),
         ];
         for test_vector in test_vectors {
             let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
-            assert_eq!(Some(*test_vector.fragment()), uri.fragment());
+            assert_eq!(
+                Some(*test_vector.fragment()),
+                uri.fragment_as_string().unwrap().as_deref()
+            );
         }
     }
 
@@ -2017,23 +2075,26 @@ mod tests {
         named_tuple!(
             struct TestVector {
                 uri_string: &'static str,
-                expected_host: &'static [u8],
+                expected_host: &'static str,
             }
         );
         let test_vectors: &[TestVector] = &[
-            ("http://[::1]/", &b"::1"[..]).into(),
-            ("http://[::ffff:1.2.3.4]/", &b"::ffff:1.2.3.4"[..]).into(),
-            ("http://[2001:db8:85a3:8d3:1319:8a2e:370:7348]/", &b"2001:db8:85a3:8d3:1319:8a2e:370:7348"[..]).into(),
-            ("http://[fFfF::1]", &b"fFfF::1"[..]).into(),
-            ("http://[1234::1]", &b"1234::1"[..]).into(),
-            ("http://[fFfF:1:2:3:4:5:6:a]", &b"fFfF:1:2:3:4:5:6:a"[..]).into(),
-            ("http://[2001:db8:85a3::8a2e:0]/", &b"2001:db8:85a3::8a2e:0"[..]).into(),
-            ("http://[2001:db8:85a3:8a2e::]/", &b"2001:db8:85a3:8a2e::"[..]).into(),
+            ("http://[::1]/", "::1").into(),
+            ("http://[::ffff:1.2.3.4]/", "::ffff:1.2.3.4").into(),
+            ("http://[2001:db8:85a3:8d3:1319:8a2e:370:7348]/", "2001:db8:85a3:8d3:1319:8a2e:370:7348").into(),
+            ("http://[fFfF::1]", "fFfF::1").into(),
+            ("http://[1234::1]", "1234::1").into(),
+            ("http://[fFfF:1:2:3:4:5:6:a]", "fFfF:1:2:3:4:5:6:a").into(),
+            ("http://[2001:db8:85a3::8a2e:0]/", "2001:db8:85a3::8a2e:0").into(),
+            ("http://[2001:db8:85a3:8a2e::]/", "2001:db8:85a3:8a2e::").into(),
         ];
         for test_vector in test_vectors {
             let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
-            assert_eq!(Some(*test_vector.expected_host()), uri.unwrap().host());
+            assert_eq!(
+                Some(*test_vector.expected_host()),
+                uri.unwrap().host_as_string().unwrap().as_deref()
+            );
         }
     }
 
@@ -2090,56 +2151,56 @@ mod tests {
         named_tuple!(
             struct TestVector {
                 scheme: Option<&'static str>,
-                userinfo: Option<&'static [u8]>,
-                host: Option<&'static [u8]>,
+                userinfo: Option<&'static str>,
+                host: Option<&'static str>,
                 port: Option<u16>,
                 path: &'static str,
-                query: Option<&'static [u8]>,
-                fragment: Option<&'static [u8]>,
+                query: Option<&'static str>,
+                fragment: Option<&'static str>,
                 expected_uri_string: &'static str
             }
         );
         let test_vectors: &[TestVector] = &[
             // general test vectors
-            // scheme      userinfo           host                           port        path         query                   fragment           expected_uri_string
-            (Some("http"), Some(&b"bob"[..]), Some(&b"www.example.com"[..]), Some(8080), "/abc/def",  Some(&b"foobar"[..]),   Some(&b"ch2"[..]), "http://bob@www.example.com:8080/abc/def?foobar#ch2").into(),
-            (Some("http"), Some(&b"bob"[..]), Some(&b"www.example.com"[..]), Some(0),    "",          Some(&b"foobar"[..]),   Some(&b"ch2"[..]), "http://bob@www.example.com:0?foobar#ch2").into(),
-            (Some("http"), Some(&b"bob"[..]), Some(&b"www.example.com"[..]), Some(0),    "",          Some(&b"foobar"[..]),   Some(&b""[..]),    "http://bob@www.example.com:0?foobar#").into(),
-            (None,         None,              Some(&b"example.com"[..]),     None,       "",          Some(&b"bar"[..]),      None,              "//example.com?bar").into(),
-            (None,         None,              Some(&b"example.com"[..]),     None,       "",          Some(&b""[..]),         None,              "//example.com?").into(),
-            (None,         None,              Some(&b"example.com"[..]),     None,       "",          None,                   None,              "//example.com").into(),
-            (None,         None,              Some(&b"example.com"[..]),     None,       "/",         None,                   None,              "//example.com/").into(),
-            (None,         None,              Some(&b"example.com"[..]),     None,       "/xyz",      None,                   None,              "//example.com/xyz").into(),
-            (None,         None,              Some(&b"example.com"[..]),     None,       "/xyz/",     None,                   None,              "//example.com/xyz/").into(),
-            (None,         None,              None,                          None,       "/",         None,                   None,              "/").into(),
-            (None,         None,              None,                          None,       "/xyz",      None,                   None,              "/xyz").into(),
-            (None,         None,              None,                          None,       "/xyz/",     None,                   None,              "/xyz/").into(),
-            (None,         None,              None,                          None,       "",          None,                   None,              "").into(),
-            (None,         None,              None,                          None,       "xyz",       None,                   None,              "xyz").into(),
-            (None,         None,              None,                          None,       "xyz/",      None,                   None,              "xyz/").into(),
-            (None,         None,              None,                          None,       "",          Some(&b"bar"[..]),      None,              "?bar").into(),
-            (Some("http"), None,              None,                          None,       "",          Some(&b"bar"[..]),      None,              "http:?bar").into(),
-            (Some("http"), None,              None,                          None,       "",          None,                   None,              "http:").into(),
-            (Some("http"), None,              Some(&b"::1"[..]),             None,       "",          None,                   None,              "http://[::1]").into(),
-            (Some("http"), None,              Some(&b"::1.2.3.4"[..]),       None,       "",          None,                   None,              "http://[::1.2.3.4]").into(),
-            (Some("http"), None,              Some(&b"1.2.3.4"[..]),         None,       "",          None,                   None,              "http://1.2.3.4").into(),
-            (None,         None,              None,                          None,       "",          None,                   None,              "").into(),
-            (Some("http"), Some(&b"bob"[..]), None,                          None,       "",          Some(&b"foobar"[..]),   None,              "http://bob@?foobar").into(),
-            (None,         Some(&b"bob"[..]), None,                          None,       "",          Some(&b"foobar"[..]),   None,              "//bob@?foobar").into(),
-            (None,         Some(&b"bob"[..]), None,                          None,       "",          None,                   None,              "//bob@").into(),
+            // scheme      userinfo     host                     port        path         query           fragment     expected_uri_string
+            (Some("http"), Some("bob"), Some("www.example.com"), Some(8080), "/abc/def",  Some("foobar"), Some("ch2"), "http://bob@www.example.com:8080/abc/def?foobar#ch2").into(),
+            (Some("http"), Some("bob"), Some("www.example.com"), Some(0),    "",          Some("foobar"), Some("ch2"), "http://bob@www.example.com:0?foobar#ch2").into(),
+            (Some("http"), Some("bob"), Some("www.example.com"), Some(0),    "",          Some("foobar"), Some(""),    "http://bob@www.example.com:0?foobar#").into(),
+            (None,         None,        Some("example.com"),     None,       "",          Some("bar"),    None,        "//example.com?bar").into(),
+            (None,         None,        Some("example.com"),     None,       "",          Some(""),       None,        "//example.com?").into(),
+            (None,         None,        Some("example.com"),     None,       "",          None,           None,        "//example.com").into(),
+            (None,         None,        Some("example.com"),     None,       "/",         None,           None,        "//example.com/").into(),
+            (None,         None,        Some("example.com"),     None,       "/xyz",      None,           None,        "//example.com/xyz").into(),
+            (None,         None,        Some("example.com"),     None,       "/xyz/",     None,           None,        "//example.com/xyz/").into(),
+            (None,         None,        None,                    None,       "/",         None,           None,        "/").into(),
+            (None,         None,        None,                    None,       "/xyz",      None,           None,        "/xyz").into(),
+            (None,         None,        None,                    None,       "/xyz/",     None,           None,        "/xyz/").into(),
+            (None,         None,        None,                    None,       "",          None,           None,        "").into(),
+            (None,         None,        None,                    None,       "xyz",       None,           None,        "xyz").into(),
+            (None,         None,        None,                    None,       "xyz/",      None,           None,        "xyz/").into(),
+            (None,         None,        None,                    None,       "",          Some("bar"),    None,        "?bar").into(),
+            (Some("http"), None,        None,                    None,       "",          Some("bar"),    None,        "http:?bar").into(),
+            (Some("http"), None,        None,                    None,       "",          None,           None,        "http:").into(),
+            (Some("http"), None,        Some("::1"),             None,       "",          None,           None,        "http://[::1]").into(),
+            (Some("http"), None,        Some("::1.2.3.4"),       None,       "",          None,           None,        "http://[::1.2.3.4]").into(),
+            (Some("http"), None,        Some("1.2.3.4"),         None,       "",          None,           None,        "http://1.2.3.4").into(),
+            (None,         None,        None,                    None,       "",          None,           None,        "").into(),
+            (Some("http"), Some("bob"), None,                    None,       "",          Some("foobar"), None,        "http://bob@?foobar").into(),
+            (None,         Some("bob"), None,                    None,       "",          Some("foobar"), None,        "//bob@?foobar").into(),
+            (None,         Some("bob"), None,                    None,       "",          None,           None,        "//bob@").into(),
 
             // percent-encoded character test vectors
-            // scheme      userinfo           host                                    port        path        query                  fragment           expected_uri_string
-            (Some("http"), Some(&b"b b"[..]), Some(&b"www.example.com"[..]),          Some(8080), "/abc/def", Some(&b"foobar"[..]),  Some(&b"ch2"[..]), "http://b%20b@www.example.com:8080/abc/def?foobar#ch2").into(),
-            (Some("http"), Some(&b"bob"[..]), Some(&b"www.e ample.com"[..]),          Some(8080), "/abc/def", Some(&b"foobar"[..]),  Some(&b"ch2"[..]), "http://bob@www.e%20ample.com:8080/abc/def?foobar#ch2").into(),
-            (Some("http"), Some(&b"bob"[..]), Some(&b"www.example.com"[..]),          Some(8080), "/a c/def", Some(&b"foobar"[..]),  Some(&b"ch2"[..]), "http://bob@www.example.com:8080/a%20c/def?foobar#ch2").into(),
-            (Some("http"), Some(&b"bob"[..]), Some(&b"www.example.com"[..]),          Some(8080), "/abc/def", Some(&b"foo ar"[..]),  Some(&b"ch2"[..]), "http://bob@www.example.com:8080/abc/def?foo%20ar#ch2").into(),
-            (Some("http"), Some(&b"bob"[..]), Some(&b"www.example.com"[..]),          Some(8080), "/abc/def", Some(&b"foobar"[..]),  Some(&b"c 2"[..]), "http://bob@www.example.com:8080/abc/def?foobar#c%202").into(),
-            (Some("http"), Some(&b"bob"[..]), Some(&b"\xE1\x88\xB4.example.com"[..]), Some(8080), "/abc/def", Some(&b"foobar"[..]),  None,              "http://bob@%E1%88%B4.example.com:8080/abc/def?foobar").into(),
+            // scheme      userinfo      host                     port        path        query            fragment     expected_uri_string
+            (Some("http"), Some("b b"),  Some("www.example.com"), Some(8080), "/abc/def", Some("foobar"),  Some("ch2"), "http://b%20b@www.example.com:8080/abc/def?foobar#ch2").into(),
+            (Some("http"), Some("bob"),  Some("www.e ample.com"), Some(8080), "/abc/def", Some("foobar"),  Some("ch2"), "http://bob@www.e%20ample.com:8080/abc/def?foobar#ch2").into(),
+            (Some("http"), Some("bob"),  Some("www.example.com"), Some(8080), "/a c/def", Some("foobar"),  Some("ch2"), "http://bob@www.example.com:8080/a%20c/def?foobar#ch2").into(),
+            (Some("http"), Some("bob"),  Some("www.example.com"), Some(8080), "/abc/def", Some("foo ar"),  Some("ch2"), "http://bob@www.example.com:8080/abc/def?foo%20ar#ch2").into(),
+            (Some("http"), Some("bob"),  Some("www.example.com"), Some(8080), "/abc/def", Some("foobar"),  Some("c 2"), "http://bob@www.example.com:8080/abc/def?foobar#c%202").into(),
+            (Some("http"), Some("bob"),  Some("ሴ.example.com"),   Some(8080), "/abc/def", Some("foobar"),  None,        "http://bob@%E1%88%B4.example.com:8080/abc/def?foobar").into(),
 
             // normalization of IPv6 address hex digits
-            // scheme      userinfo           host                   port        path        query                 fragment           expected_uri_string
-            (Some("http"), Some(&b"bob"[..]), Some(&b"fFfF::1"[..]), Some(8080), "/abc/def", Some(&b"foobar"[..]), Some(&b"c 2"[..]), "http://bob@[ffff::1]:8080/abc/def?foobar#c%202").into(),
+            // scheme      userinfo     host                   port        path        query           fragment     expected_uri_string
+            (Some("http"), Some("bob"), Some("fFfF::1"),       Some(8080), "/abc/def", Some("foobar"), Some("c 2"), "http://bob@[ffff::1]:8080/abc/def?foobar#c%202").into(),
         ];
         for test_vector in test_vectors {
             let mut uri = Uri::default();
@@ -2152,7 +2213,7 @@ mod tests {
             ) {
                 let mut authority = Authority::default();
                 authority.set_userinfo(test_vector.userinfo().map(Into::into));
-                authority.set_host(test_vector.host().unwrap_or_else(|| &b""[..]));
+                authority.set_host(test_vector.host().unwrap_or_else(|| ""));
                 authority.set_port(*test_vector.port());
                 uri.set_authority(Some(authority));
             } else {
