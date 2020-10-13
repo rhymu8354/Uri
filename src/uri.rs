@@ -1604,6 +1604,7 @@ mod tests {
             ("http://[2001:db8:85a3:8d3:1319:8a2e:370::1]/", Error::TooManyAddressParts).into(),
             ("http://[2001:db8:85a3::8a2e:0:]/", Error::TruncatedHost).into(),
             ("http://[2001:db8:85a3::8a2e::]/", Error::TooManyDoubleColons).into(),
+            ("http://[20001:db8:85a3::1]/", Error::TooManyDigits).into(),
             ("http://[]/", Error::TooFewAddressParts).into(),
             ("http://[:]/", Error::TruncatedHost).into(),
             ("http://[v]/", Error::TruncatedHost).into(),
