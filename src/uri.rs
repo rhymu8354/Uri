@@ -31,6 +31,22 @@ impl Uri {
         self.authority.as_ref()
     }
 
+    fn can_navigate_path_up_one_level<T>(path: T) -> bool
+        where T: AsRef<[Vec<u8>]>
+    {
+        let path = path.as_ref();
+        match path.first() {
+            // First segment empty means path has leading slash,
+            // so we can only navigate up if there are two or more segments.
+            Some(segment) if segment.is_empty() => path.len() > 1,
+
+            // Otherwise, we can navigate up as long as there is at least one
+            // segment.
+            Some(_) => true,
+            None => false
+        }
+    }
+
     fn check_scheme<T>(scheme: T) -> Result<T, Error>
         where T: AsRef<str>
     {
@@ -58,22 +74,6 @@ impl Uri {
     #[must_use = "please use the return value kthxbye"]
     pub fn contains_relative_path(&self) -> bool {
         !Self::is_path_absolute(&self.path)
-    }
-
-    fn can_navigate_path_up_one_level<T>(path: T) -> bool
-        where T: AsRef<[Vec<u8>]>
-    {
-        let path = path.as_ref();
-        match path.first() {
-            // First segment empty means path has leading slash,
-            // so we can only navigate up if there are two or more segments.
-            Some(segment) if segment.is_empty() => path.len() > 1,
-
-            // Otherwise, we can navigate up as long as there is at least one
-            // segment.
-            Some(_) => true,
-            None => false
-        }
     }
 
     fn decode_query_or_fragment<T>(
