@@ -1,30 +1,6 @@
 #![warn(clippy::pedantic)]
 
-use std::collections::HashSet;
 use std::convert::TryFrom;
-
-// This is the character set containing just numbers.
-lazy_static! {
-    static ref DIGIT: HashSet<char> =
-        ('0'..='9')
-        .collect();
-}
-
-// This is the character set containing just the upper-case
-// letters 'A' through 'F', used in upper-case hexadecimal.
-lazy_static! {
-    static ref HEX_UPPER: HashSet<char> =
-        ('A'..='F')
-        .collect();
-}
-
-// This is the character set containing just the lower-case
-// letters 'a' through 'f', used in lower-case hexadecimal.
-lazy_static! {
-    static ref HEX_LOWER: HashSet<char> =
-        ('a'..='f')
-        .collect();
-}
 
 #[derive(Debug, Clone, thiserror::Error, PartialEq)]
 pub enum Error {
