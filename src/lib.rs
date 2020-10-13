@@ -242,25 +242,52 @@ pub enum Error {
     TruncatedHost,
 }
 
-// TODO: explore possibly returning an iterator instead of a String
+fn decode_element<T>(
+    element: T,
+    allowed_characters: &'static HashSet<char>,
+    context: Context
+) -> Result<Vec<u8>, Error>
+    where T: AsRef<str>
+{
+    let mut decoding_pec = false;
+    let mut pec_decoder = PercentEncodedCharacterDecoder::new();
+    element
+        .as_ref()
+        .chars()
+        .filter_map(|c| {
+            if decoding_pec {
+                pec_decoder
+                    .next(c)
+                    .map_err(Into::into)
+                    .transpose()
+                    .map(|c| {
+                        decoding_pec = false;
+                        c
+                    })
+            } else if c == '%' {
+                decoding_pec = true;
+                None
+            } else if allowed_characters.contains(&c) {
+                Some(Ok(c as u8))
+            } else {
+                Some(Err(Error::IllegalCharacter(context)))
+            }
+        })
+        .collect()
+}
+
 fn encode_element(
     element: &[u8],
     allowed_characters: &HashSet<char>
 ) -> String {
-    let mut encoded_element = String::new();
-    for ci in element {
-        let c = char::try_from(*ci);
-        match c {
-            Ok(c) if allowed_characters.contains(&c) => {
-                encoded_element.push(c);
-            },
-
-            _ => {
-                encoded_element += &format!("%{:X}", ci);
+    element.iter()
+        .map(|ci| {
+            match char::try_from(*ci) {
+                Ok(c) if allowed_characters.contains(&c) => c.to_string(),
+                _ => format!("%{:X}", ci),
             }
-        }
-    }
-    encoded_element
+        })
+        .collect::<String>()
 }
 
 fn validate_ipv4_address<T>(address: T) -> Result<(), Error>
@@ -591,47 +618,13 @@ impl Uri {
         }
     }
 
-    fn decode_element<T>(
-        element: T,
-        allowed_characters: &'static HashSet<char>,
-        context: Context
-    ) -> Result<Vec<u8>, Error>
-        where T: AsRef<str>
-    {
-        let mut decoding_pec = false;
-        let mut pec_decoder = PercentEncodedCharacterDecoder::new();
-        element
-            .as_ref()
-            .chars()
-            .filter_map(|c| {
-                if decoding_pec {
-                    pec_decoder
-                        .next(c)
-                        .map_err(Into::into)
-                        .transpose()
-                        .map(|c| {
-                            decoding_pec = false;
-                            c
-                        })
-                } else if c == '%' {
-                    decoding_pec = true;
-                    None
-                } else if allowed_characters.contains(&c) {
-                    Some(Ok(c as u8))
-                } else {
-                    Some(Err(Error::IllegalCharacter(context)))
-                }
-            })
-            .collect()
-    }
-
     fn decode_query_or_fragment<T>(
         query_or_fragment: T,
         context: Context,
     ) -> Result<Vec<u8>, Error>
         where T: AsRef<str>
     {
-        Self::decode_element(
+        decode_element(
             query_or_fragment,
             &QUERY_OR_FRAGMENT_NOT_PCT_ENCODED,
             context
@@ -788,7 +781,7 @@ impl Uri {
         let (userinfo, mut host_port_string) = match authority_string.find('@') {
             Some(user_info_delimiter) => (
                 Some(
-                    Self::decode_element(
+                    decode_element(
                         &authority_string[0..user_info_delimiter],
                         &USER_INFO_NOT_PCT_ENCODED,
                         Context::Userinfo
@@ -962,7 +955,7 @@ impl Uri {
                 path_string
                     .split('/')
                     .map(|segment| {
-                        Self::decode_element(
+                        decode_element(
                             &segment,
                             &PCHAR_NOT_PCT_ENCODED,
                             Context::Path
@@ -1325,12 +1318,21 @@ mod tests {
     }
 
     #[test]
-    fn parse_from_string_has_a_port_number() {
+    fn parse_from_string_has_a_non_empty_port_number() {
         let uri = Uri::parse("http://www.example.com:8080/foo/bar");
         assert!(uri.is_ok());
         let uri = uri.unwrap();
         assert_eq!(Some("www.example.com"), uri.host_as_string().unwrap().as_deref());
         assert_eq!(Some(8080), uri.port());
+    }
+
+    #[test]
+    fn parse_from_string_has_an_empty_port_number() {
+        let uri = Uri::parse("http://www.example.com:/foo/bar");
+        assert!(uri.is_ok());
+        let uri = uri.unwrap();
+        assert_eq!(Some("www.example.com"), uri.host_as_string().unwrap().as_deref());
+        assert_eq!(None, uri.port());
     }
 
     #[test]
