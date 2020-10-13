@@ -20,7 +20,7 @@ pub static DIGIT: Lazy<HashSet<char>> = Lazy::new(||
 // This is the character set containing just the characters allowed
 // in a hexadecimal digit.
 pub static HEXDIG: Lazy<HashSet<char>> = Lazy::new(||
-    ('0'..='9')
+    DIGIT.iter().copied()
     .chain('A'..='F')
     .chain('a'..='f')
     .collect()
