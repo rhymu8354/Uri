@@ -52,5 +52,5 @@ pub fn encode_element(
                 _ => format!("%{:X}", ci),
             }
         })
-        .collect::<String>()
+        .collect()
 }
