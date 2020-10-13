@@ -1,5 +1,4 @@
 #![warn(clippy::pedantic)]
-#![allow(clippy::non_ascii_literal)]
 
 #[cfg(test)]
 #[macro_use]
