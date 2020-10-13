@@ -2,9 +2,6 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::non_ascii_literal)]
 
-#[macro_use]
-extern crate lazy_static;
-
 #[cfg(test)]
 #[macro_use]
 extern crate named_tuple;
@@ -14,150 +11,134 @@ use percent_encoded_character_decoder::PercentEncodedCharacterDecoder;
 
 use std::collections::HashSet;
 use std::convert::TryFrom;
+use once_cell::sync::Lazy;
 
 // This is the character set containing just the alphabetic characters
 // from the ASCII character set.
-//
-// TODO: consider improvement
-//
-// [14:49] silmeth: @rhymu8354 you might want to look at once_cell as a nicer
-// macro-less replacement for lazystatic!()
-lazy_static! {
-    static ref ALPHA: HashSet<char> =
-        ('a'..='z')
-        .chain('A'..='Z')
-        .collect::<HashSet<char>>();
-}
+static ALPHA: Lazy<HashSet<char>> = Lazy::new(||
+    ('a'..='z')
+    .chain('A'..='Z')
+    .collect()
+);
 
 // This is the character set containing just numbers.
-lazy_static! {
-    static ref DIGIT: HashSet<char> =
-        ('0'..='9')
-        .collect::<HashSet<char>>();
-}
+static DIGIT: Lazy<HashSet<char>> = Lazy::new(||
+    ('0'..='9')
+    .collect()
+);
 
 // This is the character set containing just the characters allowed
 // in a hexadecimal digit.
-lazy_static! {
-    static ref HEXDIG: HashSet<char> =
-        ('0'..='9')
-        .chain('A'..='F')
-        .chain('a'..='f')
-        .collect::<HashSet<char>>();
-}
+static HEXDIG: Lazy<HashSet<char>> = Lazy::new(||
+    ('0'..='9')
+    .chain('A'..='F')
+    .chain('a'..='f')
+    .collect()
+);
 
 // This is the character set corresponds to the "unreserved" syntax
 // specified in RFC 3986 (https://tools.ietf.org/html/rfc3986).
-lazy_static! {
-    static ref UNRESERVED: HashSet<char> =
-        ALPHA.iter()
-        .chain(DIGIT.iter())
-        .chain(['-', '.', '_', '~'].iter())
-        .copied()
-        .collect::<HashSet<char>>();
-}
+static UNRESERVED: Lazy<HashSet<char>> = Lazy::new(||
+    ALPHA.iter()
+    .chain(DIGIT.iter())
+    .chain(['-', '.', '_', '~'].iter())
+    .copied()
+    .collect()
+);
 
 // This is the character set corresponds to the "sub-delims" syntax
 // specified in RFC 3986 (https://tools.ietf.org/html/rfc3986).
-lazy_static! {
-    static ref SUB_DELIMS: HashSet<char> =
-        [
-            '!', '$', '&', '\'', '(', ')',
-            '*', '+', ',', ';', '='
-        ]
-        .iter()
-        .copied()
-        .collect::<HashSet<char>>();
-}
+static SUB_DELIMS: Lazy<HashSet<char>> = Lazy::new(||
+    [
+        '!', '$', '&', '\'', '(', ')',
+        '*', '+', ',', ';', '='
+    ]
+    .iter()
+    .copied()
+    .collect()
+);
 
 // This is the character set corresponds to the second part
 // of the "scheme" syntax
 // specified in RFC 3986 (https://tools.ietf.org/html/rfc3986).
-lazy_static! {
-    static ref SCHEME_NOT_FIRST: HashSet<char> =
-        ALPHA.iter()
-        .chain(DIGIT.iter())
-        .chain(['+', '-', '.'].iter())
-        .copied()
-        .collect::<HashSet<char>>();
-}
+static SCHEME_NOT_FIRST: Lazy<HashSet<char>> = Lazy::new(||
+    ALPHA.iter()
+    .chain(DIGIT.iter())
+    .chain(['+', '-', '.'].iter())
+    .copied()
+    .collect()
+);
 
 // This is the character set corresponds to the "pchar" syntax
 // specified in RFC 3986 (https://tools.ietf.org/html/rfc3986),
 // leaving out "pct-encoded".
-lazy_static! {
-    static ref PCHAR_NOT_PCT_ENCODED: HashSet<char> =
-        UNRESERVED.iter()
-        .chain(SUB_DELIMS.iter())
-        .chain([':', '@'].iter())
-        .copied()
-        .collect::<HashSet<char>>();
-}
+static PCHAR_NOT_PCT_ENCODED: Lazy<HashSet<char>> = Lazy::new(||
+    UNRESERVED.iter()
+    .chain(SUB_DELIMS.iter())
+    .chain([':', '@'].iter())
+    .copied()
+    .collect()
+);
 
 // This is the character set corresponds to the "query" syntax
 // and the "fragment" syntax
 // specified in RFC 3986 (https://tools.ietf.org/html/rfc3986),
 // leaving out "pct-encoded".
-lazy_static! {
-    static ref QUERY_OR_FRAGMENT_NOT_PCT_ENCODED: HashSet<char> =
-        PCHAR_NOT_PCT_ENCODED.iter()
-        .chain(['/', '?'].iter())
-        .copied()
-        .collect::<HashSet<char>>();
-}
+static QUERY_OR_FRAGMENT_NOT_PCT_ENCODED: Lazy<HashSet<char>> = Lazy::new(||
+    PCHAR_NOT_PCT_ENCODED.iter()
+    .chain(['/', '?'].iter())
+    .copied()
+    .collect()
+);
 
 // This is the character set almost corresponds to the "query" syntax
 // specified in RFC 3986 (https://tools.ietf.org/html/rfc3986),
 // leaving out "pct-encoded", except that '+' is also excluded, because
 // for some web services (e.g. AWS S3) a '+' is treated as
 // synonymous with a space (' ') and thus gets misinterpreted.
-lazy_static! {
-    static ref QUERY_NOT_PCT_ENCODED_WITHOUT_PLUS: HashSet<char> =
-        UNRESERVED.iter()
-        .chain([
-            '!', '$', '&', '\'', '(', ')',
-            '*', ',', ';', '=',
-            ':', '@',
-            '/', '?'
-        ].iter())
-        .copied()
-        .collect::<HashSet<char>>();
-}
+static QUERY_NOT_PCT_ENCODED_WITHOUT_PLUS: Lazy<HashSet<char>> = Lazy::new(||
+    UNRESERVED.iter()
+    .chain([
+        '!', '$', '&', '\'', '(', ')',
+        '*', ',', ';', '=',
+        ':', '@',
+        '/', '?'
+    ].iter())
+    .copied()
+    .collect()
+);
 
 // This is the character set corresponds to the "userinfo" syntax
 // specified in RFC 3986 (https://tools.ietf.org/html/rfc3986),
 // leaving out "pct-encoded".
-lazy_static! {
-    static ref USER_INFO_NOT_PCT_ENCODED: HashSet<char> =
-        UNRESERVED.iter()
-        .chain(SUB_DELIMS.iter())
-        .chain([':'].iter())
-        .copied()
-        .collect::<HashSet<char>>();
-}
+static USER_INFO_NOT_PCT_ENCODED: Lazy<HashSet<char>> = Lazy::new(||
+    UNRESERVED.iter()
+    .chain(SUB_DELIMS.iter())
+    .chain([':'].iter())
+    .copied()
+    .collect()
+);
 
 // This is the character set corresponds to the "reg-name" syntax
 // specified in RFC 3986 (https://tools.ietf.org/html/rfc3986),
 // leaving out "pct-encoded".
-lazy_static! {
-    static ref REG_NAME_NOT_PCT_ENCODED: HashSet<char> =
-        UNRESERVED.iter()
-        .chain(SUB_DELIMS.iter())
-        .copied()
-        .collect::<HashSet<char>>();
-}
+static REG_NAME_NOT_PCT_ENCODED: Lazy<HashSet<char>> = Lazy::new(||
+    UNRESERVED.iter()
+    .chain(SUB_DELIMS.iter())
+    .copied()
+    .collect()
+);
 
 // This is the character set corresponds to the last part of
 // the "IPvFuture" syntax
 // specified in RFC 3986 (https://tools.ietf.org/html/rfc3986).
-lazy_static! {
-    static ref IPV_FUTURE_LAST_PART: HashSet<char> =
-        UNRESERVED.iter()
-        .chain(SUB_DELIMS.iter())
-        .chain([':'].iter())
-        .copied()
-        .collect::<HashSet<char>>();
-}
+static IPV_FUTURE_LAST_PART: Lazy<HashSet<char>> = Lazy::new(||
+    UNRESERVED.iter()
+    .chain(SUB_DELIMS.iter())
+    .chain([':'].iter())
+    .copied()
+    .collect()
+);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Context {
