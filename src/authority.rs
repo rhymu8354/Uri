@@ -136,10 +136,10 @@ impl std::fmt::Display for Authority {
         if let Some(userinfo) = &self.userinfo {
             write!(f, "{}@", encode_element(&userinfo, &USER_INFO_NOT_PCT_ENCODED))?;
         }
-        let host_as_string = String::from_utf8(self.host.clone());
-        match host_as_string {
-            Ok(host_as_string) if validate_ipv6_address(&host_as_string).is_ok() => {
-                write!(f, "[{}]", host_as_string.to_ascii_lowercase())?;
+        let host_to_string = String::from_utf8(self.host.clone());
+        match host_to_string {
+            Ok(host_to_string) if validate_ipv6_address(&host_to_string).is_ok() => {
+                write!(f, "[{}]", host_to_string.to_ascii_lowercase())?;
             },
             _ => {
                 write!(f, "{}", encode_element(&self.host, &REG_NAME_NOT_PCT_ENCODED))?;

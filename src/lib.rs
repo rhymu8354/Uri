@@ -28,10 +28,10 @@
 //! let uri = Uri::parse("http://www.example.com/foo?bar#baz").unwrap();
 //! let authority = uri.authority().unwrap();
 //! assert_eq!("www.example.com".as_bytes(), authority.host());
-//! assert_eq!(Some("www.example.com"), uri.host_as_string().unwrap().as_deref());
-//! assert_eq!("/foo", uri.path_as_string().unwrap());
-//! assert_eq!(Some("bar"), uri.query_as_string().unwrap().as_deref());
-//! assert_eq!(Some("baz"), uri.fragment_as_string().unwrap().as_deref());
+//! assert_eq!(Some("www.example.com"), uri.host_to_string().unwrap().as_deref());
+//! assert_eq!("/foo", uri.path_to_string().unwrap());
+//! assert_eq!(Some("bar"), uri.query_to_string().unwrap().as_deref());
+//! assert_eq!(Some("baz"), uri.fragment_to_string().unwrap().as_deref());
 //! ```
 //!
 //! ## Generating a URI from its components

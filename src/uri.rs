@@ -20,8 +20,8 @@ use super::character_classes::{
 /// sequences (which are always percent-encoded), getter methods such as
 /// [`path`] and [`query`] return byte array [slice] references (`&[u8]`)
 /// rather than string or string slice references.  Fallible convenience
-/// methods ending in `_as_string`, such as [`path_as_string`] and
-/// [`query_as_string`], are provided to convert these to strings.
+/// methods ending in `_to_string`, such as [`path_to_string`] and
+/// [`query_to_string`], are provided to convert these to strings.
 ///
 /// The "Authority" part of the Uri is represented by the [`Authority` type].
 /// Although the `Uri` type provides [`userinfo`], [`host`], and [`port`]
@@ -43,10 +43,10 @@ use super::character_classes::{
 /// let uri = Uri::parse("http://www.example.com/foo?bar#baz")?;
 /// let authority = uri.authority().unwrap();
 /// assert_eq!("www.example.com".as_bytes(), authority.host());
-/// assert_eq!(Some("www.example.com"), uri.host_as_string()?.as_deref());
-/// assert_eq!("/foo", uri.path_as_string()?);
-/// assert_eq!(Some("bar"), uri.query_as_string()?.as_deref());
-/// assert_eq!(Some("baz"), uri.fragment_as_string()?.as_deref());
+/// assert_eq!(Some("www.example.com"), uri.host_to_string()?.as_deref());
+/// assert_eq!("/foo", uri.path_to_string()?);
+/// assert_eq!(Some("bar"), uri.query_to_string()?.as_deref());
+/// assert_eq!(Some("baz"), uri.fragment_to_string()?.as_deref());
 /// # Ok(())
 /// # }
 /// ```
@@ -72,10 +72,10 @@ use super::character_classes::{
 /// [`Authority` type]: struct.Authority.html
 /// [`host`]: #method.host
 /// [`path`]: #method.path
-/// [`path_as_string`]: #method.path_as_string
+/// [`path_to_string`]: #method.path_to_string
 /// [`port`]: #method.port
 /// [`query`]: #method.query
-/// [`query_as_string`]: #method.query_as_string
+/// [`query_to_string`]: #method.query_to_string
 /// [`set_authority`]: #method.set_authority
 /// [`userinfo`]: #method.userinfo
 /// [slice]: https://doc.rust-lang.org/std/primitive.slice.html
@@ -168,7 +168,7 @@ impl Uri {
     /// Since fragments may contain non-UTF8 byte sequences, this function may
     /// return [`Error::CannotExpressAsUtf8`](enum.Error.html#variant.CannotExpressAsUtf8).
     #[must_use = "use the fragment return value silly programmer"]
-    pub fn fragment_as_string(&self) -> Result<Option<String>, Error> {
+    pub fn fragment_to_string(&self) -> Result<Option<String>, Error> {
         self.fragment()
             .map(|fragment| {
                 String::from_utf8(fragment.to_vec())
@@ -193,7 +193,7 @@ impl Uri {
     /// return
     /// [`Error::CannotExpressAsUtf8`](enum.Error.html#variant.CannotExpressAsUtf8).
     #[must_use = "I made that host field into a string for you; don't you want it?"]
-    pub fn host_as_string(&self) -> Result<Option<String>, Error> {
+    pub fn host_to_string(&self) -> Result<Option<String>, Error> {
         self.host()
             .map(|host| {
                 String::from_utf8(host.to_vec())
@@ -235,7 +235,7 @@ impl Uri {
     /// # fn test() -> Result<(), uri::Error> {
     /// let mut uri = Uri::parse("/a/b/c/./../../g")?;
     /// uri.normalize();
-    /// assert_eq!("/a/g", uri.path_as_string()?);
+    /// assert_eq!("/a/g", uri.path_to_string()?);
     /// # Ok(())
     /// # }
     /// ```
@@ -442,7 +442,7 @@ impl Uri {
     /// may return
     /// [`Error::CannotExpressAsUtf8`](enum.Error.html#variant.CannotExpressAsUtf8).
     #[must_use = "we went through all that trouble to put the path into a string, and you don't want it?"]
-    pub fn path_as_string(&self) -> Result<String, Error> {
+    pub fn path_to_string(&self) -> Result<String, Error> {
         match &*self.path {
             [segment] if segment.is_empty() => Ok("/".to_string()),
             path => Ok(
@@ -477,7 +477,7 @@ impl Uri {
     /// Since queries may contain non-UTF8 byte sequences, this function may
     /// return [`Error::CannotExpressAsUtf8`](enum.Error.html#variant.CannotExpressAsUtf8).
     #[must_use = "use the query return value silly programmer"]
-    pub fn query_as_string(&self) -> Result<Option<String>, Error> {
+    pub fn query_to_string(&self) -> Result<Option<String>, Error> {
         self.query()
             .map(|query| {
                 String::from_utf8(query.to_vec())
@@ -500,7 +500,7 @@ impl Uri {
     /// let base = Uri::parse("http://a/b/c/d;p?q")?;
     /// let relative_reference = Uri::parse("g;x?y#s")?;
     /// let resolved = base.resolve(&relative_reference);
-    /// assert_eq!("http://a/b/c/g;x?y#s", resolved.path_as_string()?);
+    /// assert_eq!("http://a/b/c/g;x?y#s", resolved.path_to_string()?);
     /// # Ok(())
     /// # }
     /// ```
@@ -711,7 +711,7 @@ impl Uri {
     /// Since fragments may contain non-UTF8 byte sequences, this function may
     /// return [`Error::CannotExpressAsUtf8`](enum.Error.html#variant.CannotExpressAsUtf8).
     #[must_use = "come on, you intended to use that userinfo return value, didn't you?"]
-    pub fn userinfo_as_string(&self) -> Result<Option<String>, Error> {
+    pub fn userinfo_to_string(&self) -> Result<Option<String>, Error> {
         self.userinfo()
             .map(|userinfo| {
                 String::from_utf8(userinfo.to_vec())
@@ -764,7 +764,7 @@ mod tests {
         let uri = uri.unwrap();
         assert_eq!(None, uri.scheme());
         assert_eq!(&[&b"foo"[..], &b"bar"[..]].to_vec(), uri.path());
-        assert_eq!("foo/bar", uri.path_as_string().unwrap());
+        assert_eq!("foo/bar", uri.path_to_string().unwrap());
     }
 
     #[test]
@@ -774,8 +774,8 @@ mod tests {
         let uri = uri.unwrap();
         assert_eq!(Some("http"), uri.scheme());
         assert_eq!(Some(&b"www.example.com"[..]), uri.host());
-        assert_eq!(Some("www.example.com"), uri.host_as_string().unwrap().as_deref());
-        assert_eq!(uri.path_as_string().unwrap(), "/foo/bar");
+        assert_eq!(Some("www.example.com"), uri.host_to_string().unwrap().as_deref());
+        assert_eq!(uri.path_to_string().unwrap(), "/foo/bar");
     }
 
     #[test]
@@ -785,7 +785,7 @@ mod tests {
         let uri = uri.unwrap();
         assert_eq!(Some("urn"), uri.scheme());
         assert_eq!(None, uri.host());
-        assert_eq!(uri.path_as_string().unwrap(), "book:fantasy:Hobbit");
+        assert_eq!(uri.path_to_string().unwrap(), "book:fantasy:Hobbit");
     }
 
     #[test]
@@ -815,7 +815,7 @@ mod tests {
         let uri = Uri::parse("http://www.example.com:8080/foo/bar");
         assert!(uri.is_ok());
         let uri = uri.unwrap();
-        assert_eq!(Some("www.example.com"), uri.host_as_string().unwrap().as_deref());
+        assert_eq!(Some("www.example.com"), uri.host_to_string().unwrap().as_deref());
         assert_eq!(Some(8080), uri.port());
     }
 
@@ -824,7 +824,7 @@ mod tests {
         let uri = Uri::parse("http://www.example.com:/foo/bar");
         assert!(uri.is_ok());
         let uri = uri.unwrap();
-        assert_eq!(Some("www.example.com"), uri.host_as_string().unwrap().as_deref());
+        assert_eq!(Some("www.example.com"), uri.host_to_string().unwrap().as_deref());
         assert_eq!(None, uri.port());
     }
 
@@ -833,7 +833,7 @@ mod tests {
         let uri = Uri::parse("http://www.example.com/foo/bar");
         assert!(uri.is_ok());
         let uri = uri.unwrap();
-        assert_eq!(Some("www.example.com"), uri.host_as_string().unwrap().as_deref());
+        assert_eq!(Some("www.example.com"), uri.host_to_string().unwrap().as_deref());
         assert_eq!(None, uri.port());
     }
 
@@ -964,15 +964,15 @@ mod tests {
             let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
-            assert_eq!(Some(*test_vector.host()), uri.host_as_string().unwrap().as_deref());
+            assert_eq!(Some(*test_vector.host()), uri.host_to_string().unwrap().as_deref());
             assert_eq!(
                 *test_vector.query(),
-                uri.query_as_string().unwrap().as_deref(),
+                uri.query_to_string().unwrap().as_deref(),
                 "{}", test_index
             );
             assert_eq!(
                 *test_vector.fragment(),
-                uri.fragment_as_string().unwrap().as_deref()
+                uri.fragment_to_string().unwrap().as_deref()
             );
         }
     }
@@ -1000,7 +1000,7 @@ mod tests {
             let uri = uri.unwrap();
             assert_eq!(
                 *test_vector.userinfo(),
-                uri.userinfo_as_string().unwrap().as_deref()
+                uri.userinfo_to_string().unwrap().as_deref()
             );
         }
     }
@@ -1107,7 +1107,7 @@ mod tests {
             let uri = uri.unwrap();
             assert_eq!(
                 Some(*test_vector.userinfo()),
-                uri.userinfo_as_string().unwrap().as_deref()
+                uri.userinfo_to_string().unwrap().as_deref()
             );
         }
     }
@@ -1148,7 +1148,7 @@ mod tests {
             let uri = Uri::parse(test_vector.uri_string());
             assert!(uri.is_ok());
             let uri = uri.unwrap();
-            assert_eq!(Some(*test_vector.host()), uri.host_as_string().unwrap().as_deref());
+            assert_eq!(Some(*test_vector.host()), uri.host_to_string().unwrap().as_deref());
         }
     }
 
@@ -1168,7 +1168,7 @@ mod tests {
             let uri = uri.unwrap();
             assert_eq!(
                 Some(normalized_host),
-                uri.host_as_string().unwrap().as_deref()
+                uri.host_to_string().unwrap().as_deref()
             );
         }
     }
@@ -1178,7 +1178,7 @@ mod tests {
         let uri = Uri::parse("http://example.com./foo");
         assert!(uri.is_ok());
         let uri = uri.unwrap();
-        assert_eq!(Some("example.com."), uri.host_as_string().unwrap().as_deref());
+        assert_eq!(Some("example.com."), uri.host_to_string().unwrap().as_deref());
     }
 
     #[test]
@@ -1304,7 +1304,7 @@ mod tests {
             let uri = uri.unwrap();
             assert_eq!(
                 Some(*test_vector.query()),
-                uri.query_as_string().unwrap().as_deref(),
+                uri.query_to_string().unwrap().as_deref(),
                 "{}", test_index
             );
         }
@@ -1362,7 +1362,7 @@ mod tests {
             let uri = uri.unwrap();
             assert_eq!(
                 Some(*test_vector.fragment()),
-                uri.fragment_as_string().unwrap().as_deref()
+                uri.fragment_to_string().unwrap().as_deref()
             );
         }
     }
@@ -1454,7 +1454,7 @@ mod tests {
             uri.normalize();
             assert_eq!(
                 *test_vector.normalized_path(),
-                uri.path_as_string().unwrap(),
+                uri.path_to_string().unwrap(),
                 "{}", test_vector.uri_string()
             );
         }
@@ -1574,7 +1574,7 @@ mod tests {
             assert!(uri.is_ok());
             assert_eq!(
                 Some(*test_vector.expected_host()),
-                uri.unwrap().host_as_string().unwrap().as_deref()
+                uri.unwrap().host_to_string().unwrap().as_deref()
             );
         }
     }
