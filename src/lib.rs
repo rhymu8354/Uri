@@ -7,8 +7,10 @@
 extern crate named_tuple;
 
 use std::collections::HashSet;
-use std::convert::TryFrom;
 
+mod authority;
+mod character_classes;
+mod codec;
 mod context;
 mod error;
 mod parse_host_port;
@@ -16,168 +18,17 @@ mod percent_encoded_character_decoder;
 mod validate_ipv4_address;
 mod validate_ipv6_address;
 
+use authority::Authority;
+use codec::{decode_element, encode_element};
 use context::Context;
 use error::Error;
-use parse_host_port::parse_host_port;
-use percent_encoded_character_decoder::PercentEncodedCharacterDecoder;
-use validate_ipv6_address::validate_ipv6_address;
-
-mod character_classes;
 use character_classes::{
     ALPHA,
     SCHEME_NOT_FIRST,
     PCHAR_NOT_PCT_ENCODED,
     QUERY_OR_FRAGMENT_NOT_PCT_ENCODED,
     QUERY_NOT_PCT_ENCODED_WITHOUT_PLUS,
-    USER_INFO_NOT_PCT_ENCODED,
-    REG_NAME_NOT_PCT_ENCODED,
 };
-
-fn decode_element<T>(
-    element: T,
-    allowed_characters: &'static HashSet<char>,
-    context: Context
-) -> Result<Vec<u8>, Error>
-    where T: AsRef<str>
-{
-    let mut decoding_pec = false;
-    let mut pec_decoder = PercentEncodedCharacterDecoder::new();
-    element
-        .as_ref()
-        .chars()
-        .filter_map(|c| {
-            if decoding_pec {
-                pec_decoder
-                    .next(c)
-                    .map_err(Into::into)
-                    .transpose()
-                    .map(|c| {
-                        decoding_pec = false;
-                        c
-                    })
-            } else if c == '%' {
-                decoding_pec = true;
-                None
-            } else if allowed_characters.contains(&c) {
-                Some(Ok(c as u8))
-            } else {
-                Some(Err(Error::IllegalCharacter(context)))
-            }
-        })
-        .collect()
-}
-
-fn encode_element(
-    element: &[u8],
-    allowed_characters: &HashSet<char>
-) -> String {
-    element.iter()
-        .map(|ci| {
-            match char::try_from(*ci) {
-                Ok(c) if allowed_characters.contains(&c) => c.to_string(),
-                _ => format!("%{:X}", ci),
-            }
-        })
-        .collect::<String>()
-}
-
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct Authority {
-    userinfo: Option<Vec<u8>>,
-    host: Vec<u8>,
-    port: Option<u16>,
-}
-
-impl Authority {
-    #[must_use = "why u no use host return value?"]
-    pub fn host(&self) -> &[u8] {
-        &self.host
-    }
-
-    #[must_use = "why did you get the port number and then throw it away?"]
-    pub fn port(&self) -> Option<u16> {
-        self.port
-    }
-
-    pub fn set_userinfo<T>(&mut self, userinfo: T)
-        where T: Into<Option<Vec<u8>>>
-    {
-        self.userinfo = userinfo.into();
-    }
-
-    pub fn set_host<T>(&mut self, host: T)
-        where T: Into<Vec<u8>>
-    {
-        self.host = host.into();
-    }
-
-    pub fn set_port(&mut self, port: Option<u16>) {
-        self.port = port;
-    }
-
-    #[must_use = "security breach... security breach... userinfo not used"]
-    pub fn userinfo(&self) -> Option<&[u8]> {
-        self.userinfo.as_deref()
-    }
-
-    #[must_use = "you parsed it; don't you want the results?"]
-    pub fn parse<T>(authority_string: T) -> Result<Self, Error>
-        where T: AsRef<str>
-    {
-        // First, check if there is a UserInfo, and if so, extract it.
-        let (userinfo, host_port_string) = Self::parse_userinfo(authority_string.as_ref())?;
-
-        // Next, parsing host and port from authority and path.
-        let (host, port) = parse_host_port(host_port_string)?;
-
-        // Assemble authority from its parts.
-        Ok(Self{
-            userinfo,
-            host,
-            port,
-        })
-    }
-
-    fn parse_userinfo(authority: &str) -> Result<(Option<Vec<u8>>, &str), Error> {
-        Ok(match authority.find('@') {
-            Some(delimiter) => (
-                Some(
-                    decode_element(
-                        &authority[0..delimiter],
-                        &USER_INFO_NOT_PCT_ENCODED,
-                        Context::Userinfo
-                    )?
-                ),
-                &authority[delimiter+1..]
-            ),
-            None => (
-                None,
-                authority
-            )
-        })
-    }
-}
-
-impl std::fmt::Display for Authority {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(userinfo) = &self.userinfo {
-            write!(f, "{}@", encode_element(&userinfo, &USER_INFO_NOT_PCT_ENCODED))?;
-        }
-        let host_as_string = String::from_utf8(self.host.clone());
-        match host_as_string {
-            Ok(host_as_string) if validate_ipv6_address(&host_as_string).is_ok() => {
-                write!(f, "[{}]", host_as_string.to_ascii_lowercase())?;
-    },
-            _ => {
-                write!(f, "{}", encode_element(&self.host, &REG_NAME_NOT_PCT_ENCODED))?;
-            }
-        }
-        if let Some(port) = self.port {
-            write!(f, ":{}", port)?;
-        }
-        Ok(())
-    }
-}
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Uri {
