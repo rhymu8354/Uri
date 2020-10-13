@@ -73,4 +73,6 @@ mod validate_ipv6_address;
 mod uri;
 
 pub use crate::authority::Authority;
+pub use crate::context::Context;
+pub use crate::error::Error;
 pub use crate::uri::Uri;
