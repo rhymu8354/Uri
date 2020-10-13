@@ -6,222 +6,32 @@
 #[macro_use]
 extern crate named_tuple;
 
-mod percent_encoded_character_decoder;
-use percent_encoded_character_decoder::PercentEncodedCharacterDecoder;
-
 use std::collections::HashSet;
 use std::convert::TryFrom;
-use once_cell::sync::Lazy;
 
-// This is the character set containing just the alphabetic characters
-// from the ASCII character set.
-static ALPHA: Lazy<HashSet<char>> = Lazy::new(||
-    ('a'..='z')
-    .chain('A'..='Z')
-    .collect()
-);
+mod context;
+mod error;
+mod parse_host_port;
+mod percent_encoded_character_decoder;
+mod validate_ipv4_address;
+mod validate_ipv6_address;
 
-// This is the character set containing just numbers.
-static DIGIT: Lazy<HashSet<char>> = Lazy::new(||
-    ('0'..='9')
-    .collect()
-);
+use context::Context;
+use error::Error;
+use parse_host_port::parse_host_port;
+use percent_encoded_character_decoder::PercentEncodedCharacterDecoder;
+use validate_ipv6_address::validate_ipv6_address;
 
-// This is the character set containing just the characters allowed
-// in a hexadecimal digit.
-static HEXDIG: Lazy<HashSet<char>> = Lazy::new(||
-    ('0'..='9')
-    .chain('A'..='F')
-    .chain('a'..='f')
-    .collect()
-);
-
-// This is the character set corresponds to the "unreserved" syntax
-// specified in RFC 3986 (https://tools.ietf.org/html/rfc3986).
-static UNRESERVED: Lazy<HashSet<char>> = Lazy::new(||
-    ALPHA.iter()
-    .chain(DIGIT.iter())
-    .chain(['-', '.', '_', '~'].iter())
-    .copied()
-    .collect()
-);
-
-// This is the character set corresponds to the "sub-delims" syntax
-// specified in RFC 3986 (https://tools.ietf.org/html/rfc3986).
-static SUB_DELIMS: Lazy<HashSet<char>> = Lazy::new(||
-    [
-        '!', '$', '&', '\'', '(', ')',
-        '*', '+', ',', ';', '='
-    ]
-    .iter()
-    .copied()
-    .collect()
-);
-
-// This is the character set corresponds to the second part
-// of the "scheme" syntax
-// specified in RFC 3986 (https://tools.ietf.org/html/rfc3986).
-static SCHEME_NOT_FIRST: Lazy<HashSet<char>> = Lazy::new(||
-    ALPHA.iter()
-    .chain(DIGIT.iter())
-    .chain(['+', '-', '.'].iter())
-    .copied()
-    .collect()
-);
-
-// This is the character set corresponds to the "pchar" syntax
-// specified in RFC 3986 (https://tools.ietf.org/html/rfc3986),
-// leaving out "pct-encoded".
-static PCHAR_NOT_PCT_ENCODED: Lazy<HashSet<char>> = Lazy::new(||
-    UNRESERVED.iter()
-    .chain(SUB_DELIMS.iter())
-    .chain([':', '@'].iter())
-    .copied()
-    .collect()
-);
-
-// This is the character set corresponds to the "query" syntax
-// and the "fragment" syntax
-// specified in RFC 3986 (https://tools.ietf.org/html/rfc3986),
-// leaving out "pct-encoded".
-static QUERY_OR_FRAGMENT_NOT_PCT_ENCODED: Lazy<HashSet<char>> = Lazy::new(||
-    PCHAR_NOT_PCT_ENCODED.iter()
-    .chain(['/', '?'].iter())
-    .copied()
-    .collect()
-);
-
-// This is the character set almost corresponds to the "query" syntax
-// specified in RFC 3986 (https://tools.ietf.org/html/rfc3986),
-// leaving out "pct-encoded", except that '+' is also excluded, because
-// for some web services (e.g. AWS S3) a '+' is treated as
-// synonymous with a space (' ') and thus gets misinterpreted.
-static QUERY_NOT_PCT_ENCODED_WITHOUT_PLUS: Lazy<HashSet<char>> = Lazy::new(||
-    UNRESERVED.iter()
-    .chain([
-        '!', '$', '&', '\'', '(', ')',
-        '*', ',', ';', '=',
-        ':', '@',
-        '/', '?'
-    ].iter())
-    .copied()
-    .collect()
-);
-
-// This is the character set corresponds to the "userinfo" syntax
-// specified in RFC 3986 (https://tools.ietf.org/html/rfc3986),
-// leaving out "pct-encoded".
-static USER_INFO_NOT_PCT_ENCODED: Lazy<HashSet<char>> = Lazy::new(||
-    UNRESERVED.iter()
-    .chain(SUB_DELIMS.iter())
-    .chain([':'].iter())
-    .copied()
-    .collect()
-);
-
-// This is the character set corresponds to the "reg-name" syntax
-// specified in RFC 3986 (https://tools.ietf.org/html/rfc3986),
-// leaving out "pct-encoded".
-static REG_NAME_NOT_PCT_ENCODED: Lazy<HashSet<char>> = Lazy::new(||
-    UNRESERVED.iter()
-    .chain(SUB_DELIMS.iter())
-    .copied()
-    .collect()
-);
-
-// This is the character set corresponds to the last part of
-// the "IPvFuture" syntax
-// specified in RFC 3986 (https://tools.ietf.org/html/rfc3986).
-static IPV_FUTURE_LAST_PART: Lazy<HashSet<char>> = Lazy::new(||
-    UNRESERVED.iter()
-    .chain(SUB_DELIMS.iter())
-    .chain([':'].iter())
-    .copied()
-    .collect()
-);
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Context {
-    Fragment,
-    Host,
-    Ipv4Address,
-    Ipv6Address,
-    IpvFuture,
-    Path,
-    Query,
-    Scheme,
-    Userinfo,
-}
-
-impl std::fmt::Display for Context {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Context::Fragment => {
-                write!(f, "fragment")
-            },
-            Context::Host => {
-                write!(f, "host")
-            },
-            Context::Ipv4Address => {
-                write!(f, "IPv4 address")
-            },
-            Context::Ipv6Address => {
-                write!(f, "IPv6 address")
-            },
-            Context::IpvFuture => {
-                write!(f, "IPvFuture")
-            },
-            Context::Path => {
-                write!(f, "path")
-            },
-            Context::Query => {
-                write!(f, "query")
-            },
-            Context::Scheme => {
-                write!(f, "scheme")
-            },
-            Context::Userinfo => {
-                write!(f, "user info")
-            },
-        }
-    }
-}
-
-#[derive(Debug, Clone, thiserror::Error, PartialEq)]
-pub enum Error {
-    #[error("URI contains non-UTF8 sequences")]
-    CannotExpressAsUtf8(#[from] std::string::FromUtf8Error),
-
-    #[error("scheme expected but missing")]
-    EmptyScheme,
-
-    #[error("illegal character in {0}")]
-    IllegalCharacter(Context),
-
-    #[error("illegal percent encoding")]
-    IllegalPercentEncoding(#[from] percent_encoded_character_decoder::Error),
-
-    #[error("illegal port number")]
-    IllegalPortNumber(#[source] std::num::ParseIntError),
-
-    #[error("octet group expected")]
-    InvalidDecimalOctet,
-
-    #[error("too few address parts")]
-    TooFewAddressParts,
-
-    #[error("too many address parts")]
-    TooManyAddressParts,
-
-    #[error("too many digits in IPv6 address part")]
-    TooManyDigits,
-
-    #[error("too many double-colons in IPv6 address")]
-    TooManyDoubleColons,
-
-    #[error("truncated host")]
-    TruncatedHost,
-}
+mod character_classes;
+use character_classes::{
+    ALPHA,
+    SCHEME_NOT_FIRST,
+    PCHAR_NOT_PCT_ENCODED,
+    QUERY_OR_FRAGMENT_NOT_PCT_ENCODED,
+    QUERY_NOT_PCT_ENCODED_WITHOUT_PLUS,
+    USER_INFO_NOT_PCT_ENCODED,
+    REG_NAME_NOT_PCT_ENCODED,
+};
 
 fn decode_element<T>(
     element: T,
@@ -271,213 +81,6 @@ fn encode_element(
         .collect::<String>()
 }
 
-fn validate_ipv4_address<T>(address: T) -> Result<(), Error>
-    where T: AsRef<str>
-{
-    #[derive(PartialEq)]
-    enum State {
-        NotInOctet,
-        ExpectDigitOrDot,
-    }
-    let mut num_groups = 0;
-    let mut state = State::NotInOctet;
-    let mut octet_buffer = String::new();
-    for c in address.as_ref().chars() {
-        state = match state {
-            State::NotInOctet if DIGIT.contains(&c) => {
-                octet_buffer.push(c);
-                State::ExpectDigitOrDot
-            },
-
-            State::NotInOctet => {
-                return Err(Error::IllegalCharacter(Context::Ipv4Address));
-            },
-
-            State::ExpectDigitOrDot if c == '.' => {
-                num_groups += 1;
-                if num_groups > 4 {
-                    return Err(Error::TooManyAddressParts);
-                }
-                if octet_buffer.parse::<u8>().is_err() {
-                    return Err(Error::InvalidDecimalOctet);
-                }
-                octet_buffer.clear();
-                State::NotInOctet
-            },
-
-            State::ExpectDigitOrDot if DIGIT.contains(&c) => {
-                octet_buffer.push(c);
-                State::ExpectDigitOrDot
-            },
-
-            State::ExpectDigitOrDot => {
-                return Err(Error::IllegalCharacter(Context::Ipv4Address));
-            },
-        };
-    }
-    if state == State::NotInOctet {
-        return Err(Error::TruncatedHost);
-    }
-    if !octet_buffer.is_empty() {
-        num_groups += 1;
-        if octet_buffer.parse::<u8>().is_err() {
-            return Err(Error::InvalidDecimalOctet);
-        }
-    }
-    match num_groups {
-        4 => Ok(()),
-        n if n < 4 => Err(Error::TooFewAddressParts),
-        _ => Err(Error::TooManyAddressParts),
-    }
-}
-
-// TODO: Clippy correctly advises us that this function needs refactoring
-// because it has too many lines.  We'll get back to that.
-#[allow(clippy::too_many_lines)]
-fn validate_ipv6_address<T>(address: T) -> Result<(), Error>
-    where T: AsRef<str>
-{
-    #[derive(PartialEq)]
-    enum ValidationState {
-        NoGroupsYet,
-        ColonButNoGroupsYet,
-        AfterDoubleColon,
-        InGroupNotIpv4,
-        InGroupCouldBeIpv4,
-        ColonAfterGroup,
-    }
-    let mut state = ValidationState::NoGroupsYet;
-    let mut num_groups = 0;
-    let mut num_digits = 0;
-    let mut double_colon_encountered = false;
-    let mut potential_ipv4_address_start = 0;
-    let mut ipv4_address_encountered = false;
-    let address = address.as_ref();
-    for (i, c) in address.char_indices() {
-        state = match state {
-            ValidationState::NoGroupsYet => {
-                if c == ':' {
-                    ValidationState::ColonButNoGroupsYet
-                } else if DIGIT.contains(&c) {
-                    potential_ipv4_address_start = i;
-                    num_digits = 1;
-                    ValidationState::InGroupCouldBeIpv4
-                } else if HEXDIG.contains(&c) {
-                    num_digits = 1;
-                    ValidationState::InGroupNotIpv4
-                } else {
-                    return Err(Error::IllegalCharacter(Context::Ipv6Address));
-                }
-            },
-
-            ValidationState::ColonButNoGroupsYet => {
-                if c != ':' {
-                    return Err(Error::IllegalCharacter(Context::Ipv6Address));
-                }
-                double_colon_encountered = true;
-                ValidationState::AfterDoubleColon
-            },
-
-            ValidationState::AfterDoubleColon => {
-                num_digits += 1;
-                if num_digits > 4 {
-                    return Err(Error::TooManyDigits);
-                }
-                if DIGIT.contains(&c) {
-                    potential_ipv4_address_start = i;
-                    ValidationState::InGroupCouldBeIpv4
-                } else if HEXDIG.contains(&c) {
-                    ValidationState::InGroupNotIpv4
-                } else {
-                    return Err(Error::IllegalCharacter(Context::Ipv6Address));
-                }
-            },
-
-            ValidationState::InGroupNotIpv4 => {
-                if c == ':' {
-                    num_digits = 0;
-                    num_groups += 1;
-                    ValidationState::ColonAfterGroup
-                } else if HEXDIG.contains(&c) {
-                    num_digits += 1;
-                    if num_digits > 4 {
-                        return Err(Error::TooManyDigits);
-                    }
-                    ValidationState::InGroupNotIpv4
-                } else {
-                    return Err(Error::IllegalCharacter(Context::Ipv6Address));
-                }
-            },
-
-            ValidationState::InGroupCouldBeIpv4 => {
-                if c == ':' {
-                    num_digits = 0;
-                    num_groups += 1;
-                    ValidationState::ColonAfterGroup
-                } else if c == '.' {
-                    ipv4_address_encountered = true;
-                    break;
-                } else {
-                    num_digits += 1;
-                    if num_digits > 4 {
-                        return Err(Error::TooManyDigits);
-                    }
-                    if DIGIT.contains(&c) {
-                        ValidationState::InGroupCouldBeIpv4
-                    } else if HEXDIG.contains(&c) {
-                        ValidationState::InGroupNotIpv4
-                    } else {
-                        return Err(Error::IllegalCharacter(Context::Ipv6Address));
-                    }
-                }
-            },
-
-            ValidationState::ColonAfterGroup => {
-                if c == ':' {
-                    if double_colon_encountered {
-                        return Err(Error::TooManyDoubleColons);
-                    } else {
-                        double_colon_encountered = true;
-                        ValidationState::AfterDoubleColon
-                    }
-                } else if DIGIT.contains(&c) {
-                    potential_ipv4_address_start = i;
-                    num_digits += 1;
-                    ValidationState::InGroupCouldBeIpv4
-                } else if HEXDIG.contains(&c) {
-                    num_digits += 1;
-                    ValidationState::InGroupNotIpv4
-                } else {
-                    return Err(Error::IllegalCharacter(Context::Ipv6Address));
-                }
-            },
-        };
-    }
-    if
-        (state == ValidationState::InGroupNotIpv4)
-        || (state == ValidationState::InGroupCouldBeIpv4)
-    {
-        // count trailing group
-        num_groups += 1;
-    }
-    if
-        (state == ValidationState::ColonButNoGroupsYet)
-        || (state == ValidationState::ColonAfterGroup)
-    { // trailing single colon
-        return Err(Error::TruncatedHost);
-    }
-    if ipv4_address_encountered {
-        validate_ipv4_address(&address[potential_ipv4_address_start..])?;
-        num_groups += 2;
-    }
-    match (double_colon_encountered, num_groups) {
-        (true, n) if n <= 7 => Ok(()),
-        (false, 8) => Ok(()),
-        (false, n) if n < 8 => Err(Error::TooFewAddressParts),
-        (_, _) => Err(Error::TooManyAddressParts),
-    }
-}
-
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Authority {
     userinfo: Option<Vec<u8>>,
@@ -516,6 +119,43 @@ impl Authority {
     pub fn userinfo(&self) -> Option<&[u8]> {
         self.userinfo.as_deref()
     }
+
+    #[must_use = "you parsed it; don't you want the results?"]
+    pub fn parse<T>(authority_string: T) -> Result<Self, Error>
+        where T: AsRef<str>
+    {
+        // First, check if there is a UserInfo, and if so, extract it.
+        let (userinfo, host_port_string) = Self::parse_userinfo(authority_string.as_ref())?;
+
+        // Next, parsing host and port from authority and path.
+        let (host, port) = parse_host_port(host_port_string)?;
+
+        // Assemble authority from its parts.
+        Ok(Self{
+            userinfo,
+            host,
+            port,
+        })
+    }
+
+    fn parse_userinfo(authority: &str) -> Result<(Option<Vec<u8>>, &str), Error> {
+        Ok(match authority.find('@') {
+            Some(delimiter) => (
+                Some(
+                    decode_element(
+                        &authority[0..delimiter],
+                        &USER_INFO_NOT_PCT_ENCODED,
+                        Context::Userinfo
+                    )?
+                ),
+                &authority[delimiter+1..]
+            ),
+            None => (
+                None,
+                authority
+            )
+        })
+    }
 }
 
 impl std::fmt::Display for Authority {
@@ -527,7 +167,7 @@ impl std::fmt::Display for Authority {
         match host_as_string {
             Ok(host_as_string) if validate_ipv6_address(&host_as_string).is_ok() => {
                 write!(f, "[{}]", host_as_string.to_ascii_lowercase())?;
-            },
+    },
             _ => {
                 write!(f, "{}", encode_element(&self.host, &REG_NAME_NOT_PCT_ENCODED))?;
             }
@@ -717,7 +357,7 @@ impl Uri {
         normalized_path
     }
 
-    pub fn parse<T>(uri_string: T) -> Result<Uri, Error>
+    pub fn parse<T>(uri_string: T) -> Result<Self, Error>
         where T: AsRef<str>
     {
         let (scheme, rest) = Self::parse_scheme(uri_string.as_ref())?;
@@ -729,171 +369,12 @@ impl Uri {
         let (authority, path) = Self::split_authority_from_path_and_parse_them(authority_and_path_string)?;
         let (fragment, possible_query) = Self::parse_fragment(query_and_or_fragment)?;
         let query = Self::parse_query(possible_query)?;
-        Ok(Uri{
+        Ok(Self{
             scheme,
             authority,
             path,
             query,
             fragment
-        })
-    }
-
-    // TODO: Needs refactoring, as Clippy dutifully told us.
-    #[allow(clippy::too_many_lines)]
-    fn parse_authority<T>(authority_string: T) -> Result<Authority, Error>
-        where T: AsRef<str>
-    {
-        // These are the various states for the state machine implemented
-        // below to correctly split up and validate the URI substring
-        // containing the host and potentially a port number as well.
-        #[derive(PartialEq)]
-        enum HostParsingState {
-            NotIpLiteral,
-            PercentEncodedCharacter,
-            Ipv6Address,
-            IpvFutureNumber,
-            IpvFutureBody,
-            GarbageCheck,
-            Port,
-        };
-
-        // First, check if there is a UserInfo, and if so, extract it.
-        let authority_string = authority_string.as_ref();
-        let (userinfo, mut host_port_string) = match authority_string.find('@') {
-            Some(user_info_delimiter) => (
-                Some(
-                    decode_element(
-                        &authority_string[0..user_info_delimiter],
-                        &USER_INFO_NOT_PCT_ENCODED,
-                        Context::Userinfo
-                    )?
-                ),
-                &authority_string[user_info_delimiter+1..]
-            ),
-            None => (
-                None,
-                authority_string
-            )
-        };
-
-        // Next, parsing host and port from authority and path.
-        let mut port_string = String::new();
-        let mut host = Vec::<u8>::new();
-        let (mut host_parsing_state, host_is_reg_name) = if host_port_string.starts_with("[v") {
-            host_port_string = &host_port_string[2..];
-            host.push(b'v');
-            (HostParsingState::IpvFutureNumber, false)
-        } else if host_port_string.starts_with('[') {
-            host_port_string = &host_port_string[1..];
-            (HostParsingState::Ipv6Address, false)
-        } else {
-            (HostParsingState::NotIpLiteral, true)
-        };
-        let mut ipv6_address = String::new();
-        let mut pec_decoder = PercentEncodedCharacterDecoder::new();
-        for c in host_port_string.chars() {
-            host_parsing_state = match host_parsing_state {
-                HostParsingState::NotIpLiteral => {
-                    if c == '%' {
-                        HostParsingState::PercentEncodedCharacter
-                    } else if c == ':' {
-                        HostParsingState::Port
-                    } else if REG_NAME_NOT_PCT_ENCODED.contains(&c) {
-                        host.push(u8::try_from(c as u32).unwrap());
-                        host_parsing_state
-                    } else {
-                        return Err(Error::IllegalCharacter(Context::Host));
-                    }
-                },
-
-                HostParsingState::PercentEncodedCharacter => {
-                    if let Some(ci) = pec_decoder.next(c)? {
-                        host.push(ci);
-                        HostParsingState::NotIpLiteral
-                    } else {
-                        host_parsing_state
-                    }
-                },
-
-                HostParsingState::Ipv6Address => {
-                    if c == ']' {
-                        validate_ipv6_address(&ipv6_address)?;
-                        host = ipv6_address.chars().map(
-                            |c| u8::try_from(c as u32).unwrap()
-                        ).collect();
-                        HostParsingState::GarbageCheck
-                    } else {
-                        ipv6_address.push(c);
-                        host_parsing_state
-                    }
-                },
-
-                HostParsingState::IpvFutureNumber => {
-                    if c == '.' {
-                        host_parsing_state = HostParsingState::IpvFutureBody
-                    } else if c == ']' {
-                        return Err(Error::TruncatedHost);
-                    } else if !HEXDIG.contains(&c) {
-                        return Err(Error::IllegalCharacter(Context::IpvFuture));
-                    }
-                    host.push(u8::try_from(c as u32).unwrap());
-                    host_parsing_state
-                },
-
-                HostParsingState::IpvFutureBody => {
-                    if c == ']' {
-                        HostParsingState::GarbageCheck
-                    } else if IPV_FUTURE_LAST_PART.contains(&c) {
-                        host.push(u8::try_from(c as u32).unwrap());
-                        host_parsing_state
-                    } else {
-                        return Err(Error::IllegalCharacter(Context::IpvFuture));
-                    }
-                },
-
-                HostParsingState::GarbageCheck => {
-                    // illegal to have anything else, unless it's a colon,
-                    // in which case it's a port delimiter
-                    if c == ':' {
-                        HostParsingState::Port
-                    } else {
-                        return Err(Error::IllegalCharacter(Context::Host));
-                    }
-                },
-
-                HostParsingState::Port => {
-                    port_string.push(c);
-                    host_parsing_state
-                },
-            }
-        }
-        if
-            (host_parsing_state != HostParsingState::NotIpLiteral)
-            && (host_parsing_state != HostParsingState::GarbageCheck)
-            && (host_parsing_state != HostParsingState::Port)
-        {
-            // truncated or ended early
-            return Err(Error::TruncatedHost);
-        }
-        if host_is_reg_name {
-            host.make_ascii_lowercase();
-        }
-        let port = if port_string.is_empty() {
-            None
-        } else {
-            match port_string.parse::<u16>() {
-                Ok(port) => {
-                    Some(port)
-                },
-                Err(error) => {
-                    return Err(Error::IllegalPortNumber(error));
-                }
-            }
-        };
-        Ok(Authority{
-            userinfo,
-            host,
-            port,
         })
     }
 
@@ -1176,7 +657,7 @@ impl Uri {
             let path_string = &authority_and_path_string[authority_end..];
 
             // Parse the elements inside the authority string.
-            let authority = Self::parse_authority(authority_string)?;
+            let authority = Authority::parse(authority_string)?;
             let path = if path_string.is_empty() {
                 vec![vec![]]
             } else {

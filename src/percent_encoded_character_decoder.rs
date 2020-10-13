@@ -2,11 +2,7 @@
 
 use std::convert::TryFrom;
 
-#[derive(Debug, Clone, thiserror::Error, PartialEq)]
-pub enum Error {
-    #[error("illegal character")]
-    IllegalCharacter,
-}
+use super::error::Error;
 
 pub struct PercentEncodedCharacterDecoder {
     decoded_character: u8,
@@ -50,7 +46,7 @@ impl PercentEncodedCharacterDecoder {
             self.decoded_character += u8::try_from(ci).unwrap();
         } else {
             self.reset();
-            return Err(Error::IllegalCharacter);
+            return Err(Error::IllegalPercentEncoding);
         }
         Ok(())
     }
