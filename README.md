@@ -1,23 +1,43 @@
 # Uri
 
-This is a library which implements [RFC 3986](https://tools.ietf.org/html/rfc3986),
-"Uniform Resource Identifier (URI): Generic Syntax".
+This is a library which implements [RFC
+3986](https://tools.ietf.org/html/rfc3986), "Uniform Resource Identifier (URI):
+Generic Syntax".
 
-## Usage
+A URI is a compact sequence of characters that identifies an abstract or
+physical resource.  One common form of URI is the Uniform Resource Locator
+(URL), used to reference web resources:
 
-The `Uri::Uri` class is used to parse URIs from strings, render URIs as strings, and get or set the individual elements of a URI.
+    http://www.example.com/foo?bar#baz
 
-## Supported platforms / recommended toolchains
+Another kind of URI is the path reference:
 
-This is a portable C++11 library which depends only on the C++11 compiler and standard library, so it should be supported on almost any platform.  The following are recommended toolchains for popular platforms.
+    /usr/bin/zip
 
-* Windows -- [Visual Studio](https://www.visualstudio.com/) (Microsoft Visual C++)
+The purpose of this library is to provide a `Uri` type to represent a URI,
+with functions to parse URIs from their string representations, as well as
+assemble URIs from their various components.
+
+This is a multi-language library.  There are independent implementations here
+for the following programming languages:
+
+* C++
+* Rust
+
+## Building the C++ Implementation
+
+A portable library is built which depends only on the C++11 compiler and
+standard library, so it should be supported on almost any platform.  The
+following are recommended toolchains for popular platforms.
+
+* Windows -- [Visual Studio](https://www.visualstudio.com/) (Microsoft Visual
+  C++)
 * Linux -- clang or gcc
 * MacOS -- Xcode (clang)
 
-## Building
-
-This library is not intended to stand alone.  It is intended to be included in a larger solution which uses [CMake](https://cmake.org/) to generate the build system and build applications which will link with the library.
+This library is not intended to stand alone.  It is intended to be included in
+a larger solution which uses [CMake](https://cmake.org/) to generate the build
+system and build applications which will link with the library.
 
 There are two distinct steps in the build process:
 
@@ -27,11 +47,13 @@ There are two distinct steps in the build process:
 ### Prerequisites
 
 * [CMake](https://cmake.org/) version 3.8 or newer
-* C++11 toolchain compatible with CMake for your development platform (e.g. [Visual Studio](https://www.visualstudio.com/) on Windows)
+* C++11 toolchain compatible with CMake for your development platform (e.g.
+  [Visual Studio](https://www.visualstudio.com/) on Windows)
 
 ### Build system generation
 
-Generate the build system using [CMake](https://cmake.org/) from the solution root.  For example:
+Generate the build system using [CMake](https://cmake.org/) from the solution
+root.  For example:
 
 ```bash
 mkdir build
