@@ -1,8 +1,11 @@
 [package]
 name = "uri"
 version = "0.1.0"
+description = "Implementation of IETF RFC 3986, Uniform Resource Identifier (URI)"
 authors = ["Richard Walters <rwalters@digitalstirling.com>"]
 edition = "2018"
+license-file = "LICENSE.txt"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
