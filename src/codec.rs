@@ -47,7 +47,7 @@ pub fn encode_element(
         .map(|ci| {
             match char::try_from(*ci) {
                 Ok(c) if allowed_characters.contains(&c) => c.to_string(),
-                _ => format!("%{:X}", ci),
+                _ => format!("%{:02X}", ci),
             }
         })
         .collect()

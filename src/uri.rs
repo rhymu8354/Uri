@@ -1485,6 +1485,18 @@ mod tests {
     }
 
     #[test]
+    fn percent_encode_characters_with_two_digits_always() {
+        for ci in 0_u8..31_u8 {
+            let mut uri = Uri::default();
+            uri.set_query(Some(vec![ci]));
+            assert_eq!(
+                uri.to_string(),
+                format!("?%{:02X}", ci)
+            );
+        }
+    }
+
+    #[test]
     fn set_illegal_schemes() {
         let test_vectors = [
             "ab_de",
