@@ -9,6 +9,12 @@ readme = "README.md"
 categories = ["parser-implementations", "web-programming"]
 keywords = ["uri", "parser"]
 repository = "https://github.com/rhymu8354/Uri.git"
+exclude = [
+    "*.hpp",
+    "*.cpp",
+    "CMakeLists.txt",
+    "notes.md"
+]
 
 [dependencies]
 named_tuple = "0.1"
