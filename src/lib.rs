@@ -22,8 +22,8 @@
 //! ## Parsing a URI into its components
 //!
 //! ```rust
-//! # extern crate uri;
-//! use uri::Uri;
+//! # extern crate rhymuri;
+//! use rhymuri::Uri;
 //!
 //! let uri = Uri::parse("http://www.example.com/foo?bar#baz").unwrap();
 //! let authority = uri.authority().unwrap();
@@ -37,8 +37,8 @@
 //! ## Generating a URI from its components
 //!
 //! ```rust
-//! # extern crate uri;
-//! use uri::{Authority, Uri};
+//! # extern crate rhymuri;
+//! use rhymuri::{Authority, Uri};
 //!
 //! let mut uri = Uri::default();
 //! assert!(uri.set_scheme(String::from("http")).is_ok());

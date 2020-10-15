@@ -1,8 +1,16 @@
-# Uri
+# Uri (rhymuri)
 
-This is a library which implements [RFC
+This is a library which implements [IETF RFC
 3986](https://tools.ietf.org/html/rfc3986), "Uniform Resource Identifier (URI):
 Generic Syntax".
+
+[![Crates.io](https://img.shields.io/crates/v/rhymuri.svg)](https://crates.io/crates/rhymuri)
+[![Documentation](https://docs.rs/rhymuri/badge.svg)][dox]
+
+More information about the Rust implementation of this library can be found in
+the [crate documentation][dox].
+
+[dox]: https://docs.rs/rhymuri
 
 A URI is a compact sequence of characters that identifies an abstract or
 physical resource.  One common form of URI is the Uniform Resource Locator
@@ -18,7 +26,7 @@ The purpose of this library is to provide a `Uri` type to represent a URI,
 with functions to parse URIs from their string representations, as well as
 assemble URIs from their various components.
 
-This is a multi-language library.  There are independent implementations here
+This is a multi-language library containing independent implementations
 for the following programming languages:
 
 * C++
@@ -70,3 +78,7 @@ For [CMake](https://cmake.org/):
 cd build
 cmake --build . --config Release
 ```
+
+## License
+
+Licensed under the [MIT license](LICENSE.txt).

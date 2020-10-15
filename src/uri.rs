@@ -36,10 +36,10 @@ use super::character_classes::{
 /// ## Parsing a URI into its components
 ///
 /// ```rust
-/// # extern crate uri;
-/// use uri::Uri;
+/// # extern crate rhymuri;
+/// use rhymuri::Uri;
 ///
-/// # fn test() -> Result<(), uri::Error> {
+/// # fn test() -> Result<(), rhymuri::Error> {
 /// let uri = Uri::parse("http://www.example.com/foo?bar#baz")?;
 /// let authority = uri.authority().unwrap();
 /// assert_eq!("www.example.com".as_bytes(), authority.host());
@@ -54,8 +54,8 @@ use super::character_classes::{
 /// ## Generating a URI from its components
 ///
 /// ```rust
-/// # extern crate uri;
-/// use uri::{Authority, Uri};
+/// # extern crate rhymuri;
+/// use rhymuri::{Authority, Uri};
 ///
 /// let mut uri = Uri::default();
 /// assert!(uri.set_scheme(String::from("http")).is_ok());
@@ -229,10 +229,10 @@ impl Uri {
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate uri;
-    /// use uri::Uri;
+    /// # extern crate rhymuri;
+    /// use rhymuri::Uri;
     ///
-    /// # fn test() -> Result<(), uri::Error> {
+    /// # fn test() -> Result<(), rhymuri::Error> {
     /// let mut uri = Uri::parse("/a/b/c/./../../g")?;
     /// uri.normalize();
     /// assert_eq!("/a/g", uri.path_to_string()?);
@@ -493,10 +493,10 @@ impl Uri {
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate uri;
-    /// use uri::Uri;
+    /// # extern crate rhymuri;
+    /// use rhymuri::Uri;
     ///
-    /// # fn test() -> Result<(), uri::Error> {
+    /// # fn test() -> Result<(), rhymuri::Error> {
     /// let base = Uri::parse("http://a/b/c/d;p?q")?;
     /// let relative_reference = Uri::parse("g;x?y#s")?;
     /// let resolved = base.resolve(&relative_reference);
