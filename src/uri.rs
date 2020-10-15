@@ -748,7 +748,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parse_from_string_no_scheme() {
+    fn no_scheme() {
         let uri = Uri::parse("foo/bar");
         assert!(uri.is_ok());
         let uri = uri.unwrap();
@@ -758,7 +758,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_from_string_url() {
+    fn url() {
         let uri = Uri::parse("http://www.example.com/foo/bar");
         assert!(uri.is_ok());
         let uri = uri.unwrap();
@@ -769,7 +769,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_from_string_urn_default_path_delimiter() {
+    fn urn_default_path_delimiter() {
         let uri = Uri::parse("urn:book:fantasy:Hobbit");
         assert!(uri.is_ok());
         let uri = uri.unwrap();
@@ -779,7 +779,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_from_string_path_corner_cases() {
+    fn path_corner_cases() {
         named_tuple!(
             struct TestVector {
                 path_in: &'static str,
@@ -801,82 +801,13 @@ mod tests {
     }
 
     #[test]
-    fn parse_from_string_has_a_non_empty_port_number() {
-        let uri = Uri::parse("http://www.example.com:8080/foo/bar");
-        assert!(uri.is_ok());
-        let uri = uri.unwrap();
-        assert_eq!(Some("www.example.com"), uri.host_to_string().unwrap().as_deref());
-        assert_eq!(Some(8080), uri.port());
-    }
-
-    #[test]
-    fn parse_from_string_has_an_empty_port_number() {
-        let uri = Uri::parse("http://www.example.com:/foo/bar");
-        assert!(uri.is_ok());
-        let uri = uri.unwrap();
-        assert_eq!(Some("www.example.com"), uri.host_to_string().unwrap().as_deref());
-        assert_eq!(None, uri.port());
-    }
-
-    #[test]
-    fn parse_from_string_does_not_have_a_port_number() {
-        let uri = Uri::parse("http://www.example.com/foo/bar");
-        assert!(uri.is_ok());
-        let uri = uri.unwrap();
-        assert_eq!(Some("www.example.com"), uri.host_to_string().unwrap().as_deref());
-        assert_eq!(None, uri.port());
-    }
-
-    #[test]
-    fn parse_from_string_twice_first_with_port_number_then_without() {
-        let uri = Uri::parse("http://www.example.com:8080/foo/bar");
-        assert!(uri.is_ok());
-        let uri = Uri::parse("http://www.example.com/foo/bar");
-        assert!(uri.is_ok());
-        let uri = uri.unwrap();
-        assert_eq!(None, uri.port());
-    }
-
-    #[test]
-    fn parse_from_string_bad_port_number_purly_alphabetic() {
-        let uri = Uri::parse("http://www.example.com:spam/foo/bar");
-        assert!(uri.is_err());
-    }
-
-    #[test]
-    fn parse_from_string_bad_port_number_starts_numeric_ends_alphabetic() {
-        let uri = Uri::parse("http://www.example.com:8080spam/foo/bar");
-        assert!(uri.is_err());
-    }
-
-    #[test]
-    fn parse_from_string_largest_valid_port_number() {
-        let uri = Uri::parse("http://www.example.com:65535/foo/bar");
-        assert!(uri.is_ok());
-        let uri = uri.unwrap();
-        assert_eq!(Some(65535), uri.port());
-    }
-
-    #[test]
-    fn parse_from_string_bad_port_number_too_big() {
-        let uri = Uri::parse("http://www.example.com:65536/foo/bar");
-        assert!(matches!(uri, Err(Error::IllegalPortNumber(_))));
-    }
-
-    #[test]
-    fn parse_from_string_bad_port_number_negative() {
-        let uri = Uri::parse("http://www.example.com:-1234/foo/bar");
-        assert!(uri.is_err());
-    }
-
-    #[test]
-    fn parse_from_string_ends_after_authority() {
+    fn uri_ends_after_authority() {
         let uri = Uri::parse("http://www.example.com");
         assert!(uri.is_ok());
     }
 
     #[test]
-    fn parse_from_string_relative_vs_non_relative_references() {
+    fn relative_vs_non_relative_references() {
         named_tuple!(
             struct TestVector {
                 uri_string: &'static str,
@@ -901,7 +832,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_from_string_relative_vs_non_relative_paths() {
+    fn relative_vs_non_relative_paths() {
         named_tuple!(
             struct TestVector {
                 uri_string: &'static str,
@@ -932,7 +863,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_from_string_query_and_fragment_elements() {
+    fn query_and_fragment_elements() {
         named_tuple!(
             struct TestVector {
                 uri_string: &'static str,
@@ -968,45 +899,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_from_string_user_info() {
-        named_tuple!(
-            struct TestVector {
-                uri_string: &'static str,
-                userinfo: Option<&'static str>,
-            }
-        );
-        let test_vectors: &[TestVector] = &[
-            ("http://www.example.com/", None).into(),
-            ("http://joe@www.example.com", Some("joe")).into(),
-            ("http://pepe:feelsbadman@www.example.com", Some("pepe:feelsbadman")).into(),
-            ("//www.example.com", None).into(),
-            ("//bob@www.example.com", Some("bob")).into(),
-            ("/", None).into(),
-            ("foo", None).into(),
-        ];
-        for test_vector in test_vectors {
-            let uri = Uri::parse(test_vector.uri_string());
-            assert!(uri.is_ok());
-            let uri = uri.unwrap();
-            assert_eq!(
-                *test_vector.userinfo(),
-                uri.userinfo_to_string().unwrap().as_deref()
-            );
-        }
-    }
-
-    #[test]
-    fn parse_from_string_twice_first_user_info_then_without() {
-        let uri = Uri::parse("http://joe@www.example.com/foo/bar");
-        assert!(uri.is_ok());
-        let uri = Uri::parse("/foo/bar");
-        assert!(uri.is_ok());
-        let uri = uri.unwrap();
-        assert_eq!(None, uri.userinfo());
-    }
-
-    #[test]
-    fn parse_from_string_scheme_illegal_characters() {
+    fn scheme_illegal_characters() {
         let test_vectors = [
             "://www.example.com/",
             "0://www.example.com/",
@@ -1022,7 +915,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_from_string_scheme_barely_legal() {
+    fn scheme_barely_legal() {
         named_tuple!(
             struct TestVector {
                 uri_string: &'static str,
@@ -1046,7 +939,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_from_string_scheme_mixed_case () {
+    fn scheme_mixed_case () {
         let test_vectors = [
             "http://www.example.com/",
             "hTtp://www.example.com/",
@@ -1063,116 +956,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_from_string_user_info_illegal_characters() {
-        let test_vectors = [
-            "//%X@www.example.com/",
-            "//{@www.example.com/",
-        ];
-        for test_vector in &test_vectors {
-            let uri = Uri::parse(test_vector);
-            assert!(uri.is_err());
-        }
-    }
-
-    #[test]
-    fn parse_from_string_user_info_barely_legal() {
-        named_tuple!(
-            struct TestVector {
-                uri_string: &'static str,
-                userinfo: &'static str
-            }
-        );
-        let test_vectors: &[TestVector] = &[
-            ("//%41@www.example.com/", "A").into(),
-            ("//@www.example.com/", "").into(),
-            ("//!@www.example.com/", "!").into(),
-            ("//'@www.example.com/", "'").into(),
-            ("//(@www.example.com/", "(").into(),
-            ("//;@www.example.com/", ";").into(),
-            ("http://:@www.example.com/", ":").into(),
-        ];
-        for test_vector in test_vectors {
-            let uri = Uri::parse(test_vector.uri_string());
-            assert!(uri.is_ok());
-            let uri = uri.unwrap();
-            assert_eq!(
-                Some(*test_vector.userinfo()),
-                uri.userinfo_to_string().unwrap().as_deref()
-            );
-        }
-    }
-
-    #[test]
-    fn parse_from_string_host_illegal_characters() {
-        let test_vectors = [
-            "//%X@www.example.com/",
-            "//@www:example.com/",
-            "//[vX.:]/",
-        ];
-        for test_vector in &test_vectors {
-            let uri = Uri::parse(test_vector);
-            assert!(uri.is_err());
-        }
-    }
-
-    #[test]
-    fn parse_from_string_host_barely_legal() {
-        named_tuple!(
-            struct TestVector {
-                uri_string: &'static str,
-                host: &'static str
-            }
-        );
-        let test_vectors: &[TestVector] = &[
-            ("//%41/", "a").into(),
-            ("///", "").into(),
-            ("//!/", "!").into(),
-            ("//'/", "'").into(),
-            ("//(/", "(").into(),
-            ("//;/", ";").into(),
-            ("//1.2.3.4/", "1.2.3.4").into(),
-            ("//[v7.:]/", "v7.:").into(),
-            ("//[v7.aB]/", "v7.aB").into(),
-        ];
-        for test_vector in test_vectors {
-            let uri = Uri::parse(test_vector.uri_string());
-            assert!(uri.is_ok());
-            let uri = uri.unwrap();
-            assert_eq!(Some(*test_vector.host()), uri.host_to_string().unwrap().as_deref());
-        }
-    }
-
-    #[test]
-    fn parse_from_string_host_mixed_case() {
-        let test_vectors = [
-            "http://www.example.com/",
-            "http://www.EXAMPLE.com/",
-            "http://www.exAMple.com/",
-            "http://www.example.cOM/",
-            "http://wWw.exampLe.Com/",
-        ];
-        let normalized_host = "www.example.com";
-        for test_vector in &test_vectors {
-            let uri = Uri::parse(*test_vector);
-            assert!(uri.is_ok());
-            let uri = uri.unwrap();
-            assert_eq!(
-                Some(normalized_host),
-                uri.host_to_string().unwrap().as_deref()
-            );
-        }
-    }
-
-    #[test]
-    fn parse_from_string_host_ends_in_dot() {
-        let uri = Uri::parse("http://example.com./foo");
-        assert!(uri.is_ok());
-        let uri = uri.unwrap();
-        assert_eq!(Some("example.com."), uri.host_to_string().unwrap().as_deref());
-    }
-
-    #[test]
-    fn parse_from_string_dont_misinterpret_colon_in_other_places_as_scheme_delimiter() {
+    fn dont_misinterpret_colon_in_other_places_as_scheme_delimiter() {
         let test_vectors = [
             "//foo:bar@www.example.com/",
             "//www.example.com/a:b",
@@ -1190,7 +974,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_from_string_path_illegal_characters() {
+    fn path_illegal_characters() {
         let test_vectors = [
             "http://www.example.com/foo[bar",
             "http://www.example.com/]bar",
@@ -1220,7 +1004,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_from_string_path_barely_legal() {
+    fn path_barely_legal() {
         named_tuple!(
             struct TestVector {
                 uri_string: &'static str,
@@ -1243,7 +1027,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_from_string_query_illegal_characters() {
+    fn query_illegal_characters() {
         let test_vectors = [
             "http://www.example.com/?foo[bar",
             "http://www.example.com/?]bar",
@@ -1273,7 +1057,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_from_string_query_barely_legal() {
+    fn query_barely_legal() {
         named_tuple!(
             struct TestVector {
                 uri_string: &'static str,
@@ -1301,7 +1085,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_from_string_fragment_illegal_characters() {
+    fn fragment_illegal_characters() {
         let test_vectors = [
             "http://www.example.com/#foo[bar",
             "http://www.example.com/#]bar",
@@ -1331,7 +1115,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_from_string_fragment_barely_legal() {
+    fn fragment_barely_legal() {
         named_tuple!(
             struct TestVector {
                 uri_string: &'static str,
@@ -1358,7 +1142,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_from_string_paths_with_percent_encoded_characters() {
+    fn paths_with_percent_encoded_characters() {
         named_tuple!(
             struct TestVector {
                 uri_string: &'static str,
@@ -1537,82 +1321,6 @@ mod tests {
         assert!(uri2.is_ok());
         let uri2 = uri2.unwrap();
         assert_eq!(uri1, uri2);
-    }
-
-    #[test]
-    fn ipv6_address_good() {
-        named_tuple!(
-            struct TestVector {
-                uri_string: &'static str,
-                expected_host: &'static str,
-            }
-        );
-        let test_vectors: &[TestVector] = &[
-            ("http://[::1]/", "::1").into(),
-            ("http://[::ffff:1.2.3.4]/", "::ffff:1.2.3.4").into(),
-            ("http://[2001:db8:85a3:8d3:1319:8a2e:370:7348]/", "2001:db8:85a3:8d3:1319:8a2e:370:7348").into(),
-            ("http://[2001:db8:85a3:8d3:1319:8a2e:370::]/", "2001:db8:85a3:8d3:1319:8a2e:370::").into(),
-            ("http://[2001:db8:85a3:8d3:1319:8a2e::1]/", "2001:db8:85a3:8d3:1319:8a2e::1").into(),
-            ("http://[fFfF::1]", "fFfF::1").into(),
-            ("http://[1234::1]", "1234::1").into(),
-            ("http://[fFfF:1:2:3:4:5:6:a]", "fFfF:1:2:3:4:5:6:a").into(),
-            ("http://[2001:db8:85a3::8a2e:0]/", "2001:db8:85a3::8a2e:0").into(),
-            ("http://[2001:db8:85a3:8a2e::]/", "2001:db8:85a3:8a2e::").into(),
-        ];
-        for test_vector in test_vectors {
-            let uri = Uri::parse(test_vector.uri_string());
-            assert!(uri.is_ok());
-            assert_eq!(
-                Some(*test_vector.expected_host()),
-                uri.unwrap().host_to_string().unwrap().as_deref()
-            );
-        }
-    }
-
-    #[test]
-    fn ipv6_address_bad() {
-        named_tuple!(
-            struct TestVector {
-                uri_string: &'static str,
-                expected_error: Error,
-            }
-        );
-        let test_vectors: &[TestVector] = &[
-            ("http://[::fFfF::1]", Error::TooManyDoubleColons).into(),
-            ("http://[::ffff:1.2.x.4]/", Error::IllegalCharacter(Context::Ipv4Address)).into(),
-            ("http://[::ffff:1.2.3.4.8]/", Error::TooManyAddressParts).into(),
-            ("http://[::ffff:1.2.3]/", Error::TooFewAddressParts).into(),
-            ("http://[::ffff:1.2.3.]/", Error::TruncatedHost).into(),
-            ("http://[::ffff:1.2.3.256]/", Error::InvalidDecimalOctet).into(),
-            ("http://[::fxff:1.2.3.4]/", Error::IllegalCharacter(Context::Ipv6Address)).into(),
-            ("http://[::ffff:1.2.3.-4]/", Error::IllegalCharacter(Context::Ipv4Address)).into(),
-            ("http://[::ffff:1.2.3. 4]/", Error::IllegalCharacter(Context::Ipv4Address)).into(),
-            ("http://[::ffff:1.2.3.4 ]/", Error::IllegalCharacter(Context::Ipv4Address)).into(),
-            ("http://[::ffff:1.2.3.4/", Error::TruncatedHost).into(),
-            ("http://[2001:db8:85a3:8d3:1319:8a2e:370:7348:0000]/", Error::TooManyAddressParts).into(),
-            ("http://[2001:db8:85a3:8d3:1319:8a2e:370:7348::1]/", Error::TooManyAddressParts).into(),
-            ("http://[2001:db8:85a3:8d3:1319:8a2e:370::1]/", Error::TooManyAddressParts).into(),
-            ("http://[2001:db8:85a3::8a2e:0:]/", Error::TruncatedHost).into(),
-            ("http://[2001:db8:85a3::8a2e::]/", Error::TooManyDoubleColons).into(),
-            ("http://[20001:db8:85a3::1]/", Error::TooManyDigits).into(),
-            ("http://[]/", Error::TooFewAddressParts).into(),
-            ("http://[:]/", Error::TruncatedHost).into(),
-            ("http://[v]/", Error::TruncatedHost).into(),
-        ];
-        for test_vector in test_vectors {
-            let uri = Uri::parse(test_vector.uri_string());
-            assert_eq!(
-                *test_vector.expected_error(),
-                uri.unwrap_err(),
-                "{}",
-                test_vector.uri_string()
-            );
-        }
-
-        // This is a special case because std::num doesn't trust that we're
-        // good enough to make our own ParseIntError values.  FeelsBadMan
-        let uri = Uri::parse("http://::ffff:1.2.3.4]/");
-        assert!(matches!(uri, Err(Error::IllegalPortNumber(_))));
     }
 
     #[test]

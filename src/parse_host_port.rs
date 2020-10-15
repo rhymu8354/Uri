@@ -203,3 +203,94 @@ pub fn parse_host_port<T>(host_port_string: T) -> Result<(Vec<u8>, Option<u16>),
         })?
         .finalize()
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn non_empty_port_number() {
+        let result = parse_host_port("www.example.com:8080");
+        assert!(result.is_ok());
+        let (host, port) = result.unwrap();
+        assert_eq!(b"www.example.com", &host[..]);
+        assert_eq!(Some(8080), port);
+    }
+
+    #[test]
+    fn empty_port_number() {
+        let result = parse_host_port("www.example.com:");
+        assert!(result.is_ok());
+        let (host, port) = result.unwrap();
+        assert_eq!(b"www.example.com", &host[..]);
+        assert_eq!(None, port);
+    }
+
+    #[test]
+    fn no_port_number() {
+        let result = parse_host_port("www.example.com");
+        assert!(result.is_ok());
+        let (host, port) = result.unwrap();
+        assert_eq!(b"www.example.com", &host[..]);
+        assert_eq!(None, port);
+    }
+
+    #[test]
+    fn bad_port_number_purly_alphabetic() {
+        let result = parse_host_port("www.example.com:spam");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn bad_port_number_starts_numeric_ends_alphabetic() {
+        let result = parse_host_port("www.example.com:8080spam");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn largest_valid_port_number() {
+        let result = parse_host_port("www.example.com:65535");
+        assert!(result.is_ok());
+        let (_, port) = result.unwrap();
+        assert_eq!(Some(65535), port);
+    }
+
+    #[test]
+    fn bad_port_number_too_big() {
+        let result = parse_host_port("www.example.com:65536");
+        assert!(matches!(result, Err(Error::IllegalPortNumber(_))));
+    }
+
+    #[test]
+    fn bad_port_number_negative() {
+        let result = parse_host_port("www.example.com:-1234");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn truncated_host() {
+        let test_vectors = [
+            "[::ffff:1.2.3.4/",
+            "[:]/",
+            "[v]/",
+        ];
+        for test_vector in &test_vectors {
+            assert_eq!(
+                Err(Error::TruncatedHost),
+                parse_host_port(test_vector),
+                "{}",
+                test_vector
+            );
+        }
+    }
+
+    #[test]
+    fn ipv6_address_with_ipv4_part_missing_bracket() {
+        assert!(matches!(
+            parse_host_port("::ffff:1.2.3.4]"),
+            Err(Error::IllegalPortNumber(_))
+        ));
+    }
+
+}

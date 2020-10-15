@@ -210,3 +210,68 @@ pub fn validate_ipv6_address<T>(address: T) -> Result<(), Error>
         })?
         .finalize()
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn good() {
+        let test_vectors = [
+            "::1",
+            "::ffff:1.2.3.4",
+            "2001:db8:85a3:8d3:1319:8a2e:370:7348",
+            "2001:db8:85a3:8d3:1319:8a2e:370::",
+            "2001:db8:85a3:8d3:1319:8a2e::1",
+            "fFfF::1",
+            "1234::1",
+            "fFfF:1:2:3:4:5:6:a",
+            "2001:db8:85a3::8a2e:0",
+            "2001:db8:85a3:8a2e::",
+        ];
+        for test_vector in &test_vectors {
+            assert!(validate_ipv6_address(*test_vector).is_ok());
+        }
+    }
+
+    #[test]
+    fn bad() {
+        named_tuple!(
+            struct TestVector {
+                address_string: &'static str,
+                expected_error: Error,
+            }
+        );
+        let test_vectors: &[TestVector] = &[
+            ("::fFfF::1", Error::TooManyDoubleColons).into(),
+            ("::ffff:1.2.x.4", Error::IllegalCharacter(Context::Ipv4Address)).into(),
+            ("::ffff:1.2.3.4.8", Error::TooManyAddressParts).into(),
+            ("::ffff:1.2.3", Error::TooFewAddressParts).into(),
+            ("::ffff:1.2.3.", Error::TruncatedHost).into(),
+            ("::ffff:1.2.3.256", Error::InvalidDecimalOctet).into(),
+            ("::fxff:1.2.3.4", Error::IllegalCharacter(Context::Ipv6Address)).into(),
+            ("::ffff:1.2.3.-4", Error::IllegalCharacter(Context::Ipv4Address)).into(),
+            ("::ffff:1.2.3. 4", Error::IllegalCharacter(Context::Ipv4Address)).into(),
+            ("::ffff:1.2.3.4 ", Error::IllegalCharacter(Context::Ipv4Address)).into(),
+            ("2001:db8:85a3:8d3:1319:8a2e:370:7348:0000", Error::TooManyAddressParts).into(),
+            ("2001:db8:85a3:8d3:1319:8a2e:370:7348::1", Error::TooManyAddressParts).into(),
+            ("2001:db8:85a3:8d3:1319:8a2e:370::1", Error::TooManyAddressParts).into(),
+            ("2001:db8:85a3::8a2e:0:", Error::TruncatedHost).into(),
+            ("2001:db8:85a3::8a2e::", Error::TooManyDoubleColons).into(),
+            ("20001:db8:85a3::1", Error::TooManyDigits).into(),
+            ("", Error::TooFewAddressParts).into(),
+        ];
+        for test_vector in test_vectors {
+            let result = validate_ipv6_address(test_vector.address_string());
+            assert!(result.is_err(), "{}", test_vector.address_string());
+            assert_eq!(
+                *test_vector.expected_error(),
+                result.unwrap_err(),
+                "{}",
+                test_vector.address_string()
+            );
+        }
+    }
+
+}

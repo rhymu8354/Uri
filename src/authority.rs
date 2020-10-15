@@ -151,3 +151,149 @@ impl std::fmt::Display for Authority {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn userinfo() {
+        named_tuple!(
+            struct TestVector {
+                authority_string: &'static str,
+                userinfo: Option<&'static str>,
+            }
+        );
+        let test_vectors: &[TestVector] = &[
+            ("www.example.com", None).into(),
+            ("joe@www.example.com", Some("joe")).into(),
+            ("pepe:feelsbadman@www.example.com", Some("pepe:feelsbadman")).into(),
+        ];
+        for test_vector in test_vectors {
+            let authority = Authority::parse(test_vector.authority_string());
+            assert!(authority.is_ok());
+            let authority = authority.unwrap();
+            assert_eq!(
+                test_vector.userinfo().map(str::as_bytes),
+                authority.userinfo.as_ref().map(|v| &v[..])
+            );
+        }
+    }
+
+    #[test]
+    fn userinfo_illegal_characters() {
+        let test_vectors = [
+            "%X@www.example.com",
+            "{@www.example.com",
+        ];
+        for test_vector in &test_vectors {
+            let authority = Authority::parse(test_vector);
+            assert!(authority.is_err());
+        }
+    }
+
+    #[test]
+    fn userinfo_barely_legal() {
+        named_tuple!(
+            struct TestVector {
+                uri_string: &'static str,
+                userinfo: &'static str
+            }
+        );
+        let test_vectors: &[TestVector] = &[
+            ("%41@www.example.com", "A").into(),
+            ("@www.example.com", "").into(),
+            ("!@www.example.com", "!").into(),
+            ("'@www.example.com", "'").into(),
+            ("(@www.example.com", "(").into(),
+            (";@www.example.com", ";").into(),
+            (":@www.example.com", ":").into(),
+        ];
+        for test_vector in test_vectors {
+            let authority = Authority::parse(test_vector.uri_string());
+            assert!(authority.is_ok());
+            let authority = authority.unwrap();
+            assert_eq!(
+                Some(test_vector.userinfo().as_bytes()),
+                authority.userinfo.as_ref().map(|v| &v[..])
+            );
+        }
+    }
+
+    #[test]
+    fn host_illegal_characters() {
+        let test_vectors = [
+            "%X@www.example.com",
+            "@www:example.com",
+            "[vX.:]",
+        ];
+        for test_vector in &test_vectors {
+            let authority = Authority::parse(test_vector);
+            assert!(authority.is_err());
+        }
+    }
+
+    #[test]
+    fn host_barely_legal() {
+        named_tuple!(
+            struct TestVector {
+                authority_string: &'static str,
+                host: &'static str
+            }
+        );
+        let test_vectors: &[TestVector] = &[
+            ("%41", "a").into(),
+            ("", "").into(),
+            ("!", "!").into(),
+            ("'", "'").into(),
+            ("(", "(").into(),
+            (";", ";").into(),
+            ("1.2.3.4", "1.2.3.4").into(),
+            ("[v7.:]", "v7.:").into(),
+            ("[v7.aB]", "v7.aB").into(),
+        ];
+        for test_vector in test_vectors {
+            let authority = Authority::parse(test_vector.authority_string());
+            assert!(authority.is_ok());
+            let authority = authority.unwrap();
+            assert_eq!(
+                test_vector.host().as_bytes(),
+                authority.host()
+            );
+        }
+    }
+
+    #[test]
+    fn host_ends_in_dot() {
+        let authority = Authority::parse("example.com.");
+        assert!(authority.is_ok());
+        let authority = authority.unwrap();
+        assert_eq!(
+            b"example.com.",
+            authority.host()
+        );
+    }
+
+    #[test]
+    fn host_mixed_case() {
+        let test_vectors = [
+            "www.example.com",
+            "www.EXAMPLE.com",
+            "www.exAMple.com",
+            "www.example.cOM",
+            "wWw.exampLe.Com",
+        ];
+        let normalized_host = "www.example.com";
+        for test_vector in &test_vectors {
+            let authority = Authority::parse(*test_vector);
+            assert!(authority.is_ok());
+            let authority = authority.unwrap();
+            assert_eq!(
+                normalized_host.as_bytes(),
+                authority.host()
+            );
+        }
+    }
+
+}

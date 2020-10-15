@@ -94,3 +94,56 @@ pub fn validate_ipv4_address<T>(address: T) -> Result<(), Error>
         })?
         .finalize()
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn good() {
+        let test_vectors = [
+            "0.0.0.0",
+            "1.2.3.0",
+            "1.2.3.4",
+            "1.2.3.255",
+            "1.2.255.4",
+            "1.255.3.4",
+            "255.2.3.4",
+            "255.255.255.255",
+        ];
+        for test_vector in &test_vectors {
+            assert!(validate_ipv4_address(*test_vector).is_ok());
+        }
+    }
+
+    #[test]
+    fn bad() {
+        named_tuple!(
+            struct TestVector {
+                address_string: &'static str,
+                expected_error: Error,
+            }
+        );
+        let test_vectors: &[TestVector] = &[
+            ("1.2.x.4", Error::IllegalCharacter(Context::Ipv4Address)).into(),
+            ("1.2.3.4.8", Error::TooManyAddressParts).into(),
+            ("1.2.3", Error::TooFewAddressParts).into(),
+            ("1.2.3.", Error::TruncatedHost).into(),
+            ("1.2.3.256", Error::InvalidDecimalOctet).into(),
+            ("1.2.3.-4", Error::IllegalCharacter(Context::Ipv4Address)).into(),
+            ("1.2.3. 4", Error::IllegalCharacter(Context::Ipv4Address)).into(),
+            ("1.2.3.4 ", Error::IllegalCharacter(Context::Ipv4Address)).into(),
+        ];
+        for test_vector in test_vectors {
+            let result = validate_ipv4_address(test_vector.address_string());
+            assert!(result.is_err(), "{}", test_vector.address_string());
+            assert_eq!(
+                *test_vector.expected_error(),
+                result.unwrap_err(),
+                "{}",
+                test_vector.address_string()
+            );
+        }
+    }
+}
