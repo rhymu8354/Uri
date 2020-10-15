@@ -121,6 +121,11 @@ impl State{
 
     fn next_percent_encoded_character(state: Shared, c: char) -> Result<Self, Error> {
         let mut state = state;
+        // We can't use `Option::map_or` (or `Option::map_or_else`, for similar
+        // reasons) in this case because the closure would take ownership of
+        // `state`, preventing it from being used to construct the default
+        // value.
+        #[allow(clippy::option_if_let_else)]
         if let Some(ci) = state.pec_decoder.next(c)? {
             state.host.push(ci);
             Ok(Self::NotIpLiteral(state))

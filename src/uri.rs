@@ -205,10 +205,7 @@ impl Uri {
     fn is_path_absolute<T>(path: T) -> bool
         where T: AsRef<[Vec<u8>]>
     {
-        match path.as_ref() {
-            [segment, ..] if segment.is_empty() => true,
-            _ => false
-        }
+        matches!(path.as_ref(), [segment, ..] if segment.is_empty())
     }
 
     /// Determines if the URI is a `relative-ref` (relative reference), as
@@ -457,11 +454,7 @@ impl Uri {
     /// Return a copy of the port (if any) contained in the URI.
     #[must_use = "why did you get the port number and then throw it away?"]
     pub fn port(&self) -> Option<u16> {
-        if let Some(authority) = &self.authority {
-            authority.port()
-        } else {
-            None
-        }
+        self.authority.as_ref().and_then(Authority::port)
     }
 
     /// Borrow the query (if any) of the URI.
@@ -514,58 +507,59 @@ impl Uri {
                 relative_reference.query.clone()
             )
         } else {
-            let scheme = self.scheme.clone();
-            if let Some(authority) = &relative_reference.authority {
-                (
-                    scheme,
+            relative_reference.authority.as_ref().map_or_else(
+                || {
+                    let scheme = self.scheme.clone();
+                    let authority = self.authority.clone();
+                    if relative_reference.path.is_empty() {
+                        let path = self.path.clone();
+                        let query = if relative_reference.query.is_none() {
+                            self.query.clone()
+                        } else {
+                            relative_reference.query.clone()
+                        };
+                        (
+                            scheme,
+                            authority,
+                            path,
+                            query
+                        )
+                    } else {
+                        let query = relative_reference.query.clone();
+
+                        // RFC describes this as:
+                        // "if (R.path starts-with "/") then"
+                        if Self::is_path_absolute(&relative_reference.path) {
+                            (
+                                scheme,
+                                authority,
+                                relative_reference.path.clone(),
+                                query
+                            )
+                        } else {
+                            // RFC describes this as:
+                            // "T.path = merge(Base.path, R.path);"
+                            let mut path = self.path.clone();
+                            if path.len() > 1 {
+                                path.pop();
+                            }
+                            path.extend(relative_reference.path.iter().cloned());
+                            (
+                                scheme,
+                                authority,
+                                Self::normalize_path(&path),
+                                query
+                            )
+                        }
+                    }
+                },
+                |authority| (
+                    self.scheme.clone(),
                     Some(authority.clone()),
                     Self::normalize_path(&relative_reference.path),
                     relative_reference.query.clone()
                 )
-            } else {
-                let authority = self.authority.clone();
-                if relative_reference.path.is_empty() {
-                    let path = self.path.clone();
-                    let query = if relative_reference.query.is_none() {
-                        self.query.clone()
-                    } else {
-                        relative_reference.query.clone()
-                    };
-                    (
-                        scheme,
-                        authority,
-                        path,
-                        query
-                    )
-                } else {
-                    let query = relative_reference.query.clone();
-
-                    // RFC describes this as:
-                    // "if (R.path starts-with "/") then"
-                    if Self::is_path_absolute(&relative_reference.path) {
-                        (
-                            scheme,
-                            authority,
-                            relative_reference.path.clone(),
-                            query
-                        )
-                    } else {
-                        // RFC describes this as:
-                        // "T.path = merge(Base.path, R.path);"
-                        let mut path = self.path.clone();
-                        if path.len() > 1 {
-                            path.pop();
-                        }
-                        path.extend(relative_reference.path.iter().cloned());
-                        (
-                            scheme,
-                            authority,
-                            Self::normalize_path(&path),
-                            query
-                        )
-                    }
-                }
-            }
+            )
         };
         Self{
             scheme,
@@ -697,11 +691,7 @@ impl Uri {
     /// or there is an Authority in the URI but it has no userinfo in it.
     #[must_use = "security breach... security breach... userinfo not used"]
     pub fn userinfo(&self) -> Option<&[u8]> {
-        if let Some(authority) = &self.authority {
-            authority.userinfo()
-        } else {
-            None
-        }
+        self.authority.as_ref().and_then(Authority::userinfo)
     }
 
     /// Convert the fragment (if any) into a string.
