@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use std::convert::TryFrom;
+use std::fmt::Write;
 
 use super::context::Context;
 use super::error::Error;
@@ -43,12 +44,12 @@ pub fn encode_element(
     element: &[u8],
     allowed_characters: &HashSet<char>
 ) -> String {
-    element.iter()
-        .map(|ci| {
-            match char::try_from(*ci) {
-                Ok(c) if allowed_characters.contains(&c) => c.to_string(),
-                _ => format!("%{:02X}", ci),
-            }
-        })
-        .collect()
+    let mut encoding = String::with_capacity(element.len());
+    for ci in element {
+        match char::try_from(*ci) {
+            Ok(c) if allowed_characters.contains(&c) => encoding.push(c),
+            _ => write!(encoding, "%{:02X}", ci).unwrap(),
+        }
+    }
+    encoding
 }
