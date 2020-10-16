@@ -39,7 +39,7 @@ use super::character_classes::{
 /// # extern crate rhymuri;
 /// use rhymuri::Uri;
 ///
-/// # fn test() -> Result<(), rhymuri::Error> {
+/// # fn main() -> Result<(), rhymuri::Error> {
 /// let uri = Uri::parse("http://www.example.com/foo?bar#baz")?;
 /// let authority = uri.authority().unwrap();
 /// assert_eq!("www.example.com".as_bytes(), authority.host());
@@ -229,7 +229,7 @@ impl Uri {
     /// # extern crate rhymuri;
     /// use rhymuri::Uri;
     ///
-    /// # fn test() -> Result<(), rhymuri::Error> {
+    /// # fn main() -> Result<(), rhymuri::Error> {
     /// let mut uri = Uri::parse("/a/b/c/./../../g")?;
     /// uri.normalize();
     /// assert_eq!("/a/g", uri.path_to_string()?);
@@ -489,11 +489,11 @@ impl Uri {
     /// # extern crate rhymuri;
     /// use rhymuri::Uri;
     ///
-    /// # fn test() -> Result<(), rhymuri::Error> {
+    /// # fn main() -> Result<(), rhymuri::Error> {
     /// let base = Uri::parse("http://a/b/c/d;p?q")?;
     /// let relative_reference = Uri::parse("g;x?y#s")?;
     /// let resolved = base.resolve(&relative_reference);
-    /// assert_eq!("http://a/b/c/g;x?y#s", resolved.path_to_string()?);
+    /// assert_eq!("http://a/b/c/g;x?y#s", resolved.to_string());
     /// # Ok(())
     /// # }
     /// ```
@@ -1300,7 +1300,7 @@ mod tests {
             let base_uri = Uri::parse(test_vector.base_string()).unwrap();
             let relative_reference_uri = Uri::parse(test_vector.relative_reference_string()).unwrap();
             let expected_target_uri = Uri::parse(test_vector.target_string()).unwrap();
-            let actual_target_uri = base_uri.resolve(&relative_reference_uri);
+            let actual_target_uri = dbg!(base_uri.resolve(&relative_reference_uri));
             assert_eq!(expected_target_uri, actual_target_uri);
         }
     }

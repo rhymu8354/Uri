@@ -20,7 +20,7 @@ use super::validate_ipv6_address::validate_ipv6_address;
 /// # extern crate rhymuri;
 /// use rhymuri::Authority;
 ///
-/// # fn test() -> Result<(), rhymuri::Error> {
+/// # fn main() -> Result<(), rhymuri::Error> {
 /// let authority = Authority::parse("nobody@www.example.com:8080")?;
 /// assert_eq!(Some("nobody".as_bytes()), authority.userinfo());
 /// assert_eq!("www.example.com".as_bytes(), authority.host());
@@ -35,7 +35,7 @@ use super::validate_ipv6_address::validate_ipv6_address;
 /// # extern crate rhymuri;
 /// use rhymuri::Authority;
 ///
-/// # fn test() -> Result<(), rhymuri::Error> {
+/// # fn main() -> Result<(), rhymuri::Error> {
 /// let mut authority = Authority::default();
 /// authority.set_userinfo(Some("nobody").map(Into::into));
 /// authority.set_host("www.example.com");
