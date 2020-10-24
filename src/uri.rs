@@ -684,6 +684,30 @@ impl Uri {
         }
     }
 
+    /// Remove and return the authority portion (if any) of the URI.
+    #[must_use]
+    pub fn take_authority(&mut self) -> Option<Authority> {
+        self.authority.take()
+    }
+
+    /// Remove and return the fragment portion (if any) of the URI.
+    #[must_use]
+    pub fn take_fragment(&mut self) -> Option<Vec<u8>> {
+        self.fragment.take()
+    }
+
+    /// Remove and return the query portion (if any) of the URI.
+    #[must_use]
+    pub fn take_query(&mut self) -> Option<Vec<u8>> {
+        self.query.take()
+    }
+
+    /// Remove and return the scheme portion (if any) of the URI.
+    #[must_use]
+    pub fn take_scheme(&mut self) -> Option<String> {
+        self.scheme.take()
+    }
+
     /// Borrow the userinfo portion (if any) of the Authority (if any) of the
     /// URI.
     ///
@@ -1510,6 +1534,25 @@ mod tests {
             let mut uri = Uri::default();
             assert!(uri.set_scheme(Some((*test_vector).to_string())).is_err());
         }
+    }
+
+    #[test]
+    fn take_parts() {
+        let mut uri = Uri::parse("https://www.example.com/foo?bar#baz").unwrap();
+        assert_eq!(Some("https"), uri.take_scheme().as_deref());
+        assert_eq!("//www.example.com/foo?bar#baz", uri.to_string());
+        assert!(matches!(
+            uri.take_authority(),
+            Some(authority) if authority.host() == b"www.example.com"
+        ));
+        assert_eq!("/foo?bar#baz", uri.to_string());
+        assert!(matches!(uri.take_authority(), None));
+        assert_eq!(Some(&b"bar"[..]), uri.take_query().as_deref());
+        assert_eq!("/foo#baz", uri.to_string());
+        assert_eq!(None, uri.take_query().as_deref());
+        assert_eq!(Some(&b"baz"[..]), uri.take_fragment().as_deref());
+        assert_eq!("/foo", uri.to_string());
+        assert_eq!(None, uri.take_fragment().as_deref());
     }
 
 }
