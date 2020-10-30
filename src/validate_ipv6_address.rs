@@ -1,12 +1,14 @@
 #![warn(clippy::pedantic)]
 
-use super::character_classes::{
-    DIGIT,
-    HEXDIG,
+use super::{
+    character_classes::{
+        DIGIT,
+        HEXDIG,
+    },
+    context::Context,
+    error::Error,
+    validate_ipv4_address::validate_ipv4_address,
 };
-use super::context::Context;
-use super::error::Error;
-use super::validate_ipv4_address::validate_ipv4_address;
 
 enum MachineExitStatus<'a> {
     Error(Error),
@@ -40,20 +42,22 @@ enum State<'a> {
 impl<'a> State<'a> {
     fn finalize(mut self) -> Result<(), Error> {
         match &mut self {
-            Self::InGroupNotIpv4(state)
-            | Self::InGroupCouldBeIpv4(state) => {
+            Self::InGroupNotIpv4(state) | Self::InGroupCouldBeIpv4(state) => {
                 // count trailing group
                 state.num_groups += 1;
             },
             Self::InGroupIpv4(state) => {
-                validate_ipv4_address(&state.address[state.potential_ipv4_address_start..])?;
+                validate_ipv4_address(
+                    &state.address[state.potential_ipv4_address_start..],
+                )?;
                 state.num_groups += 2;
             },
             _ => {},
         };
         match self {
-            Self::ColonButNoGroupsYet(_)
-            | Self::ColonAfterGroup(_) => Err(Error::TruncatedHost),
+            Self::ColonButNoGroupsYet(_) | Self::ColonAfterGroup(_) => {
+                Err(Error::TruncatedHost)
+            },
 
             Self::AfterDoubleColon(state)
             | Self::InGroupNotIpv4(state)
@@ -66,12 +70,12 @@ impl<'a> State<'a> {
                     (false, n) if n < 8 => Err(Error::TooFewAddressParts),
                     (_, _) => Err(Error::TooManyAddressParts),
                 }
-            }
+            },
         }
     }
 
     fn new(address: &'a str) -> Self {
-        Self::NoGroupsYet(Shared{
+        Self::NoGroupsYet(Shared {
             address,
             num_groups: 0,
             num_digits: 0,
@@ -80,19 +84,37 @@ impl<'a> State<'a> {
         })
     }
 
-    fn next(self, i: usize, c: char) -> Result<Self, MachineExitStatus<'a>> {
+    fn next(
+        self,
+        i: usize,
+        c: char,
+    ) -> Result<Self, MachineExitStatus<'a>> {
         match self {
             Self::NoGroupsYet(state) => Self::next_no_groups_yet(state, i, c),
-            Self::ColonButNoGroupsYet(state) => Self::next_colon_but_no_groups_yet(state, c),
-            Self::AfterDoubleColon(state) => Self::next_after_double_colon(state, i, c),
-            Self::InGroupNotIpv4(state) => Self::next_in_group_not_ipv4(state, c),
-            Self::InGroupCouldBeIpv4(state) => Self::next_in_group_could_be_ipv4(state, c),
+            Self::ColonButNoGroupsYet(state) => {
+                Self::next_colon_but_no_groups_yet(state, c)
+            },
+            Self::AfterDoubleColon(state) => {
+                Self::next_after_double_colon(state, i, c)
+            },
+            Self::InGroupNotIpv4(state) => {
+                Self::next_in_group_not_ipv4(state, c)
+            },
+            Self::InGroupCouldBeIpv4(state) => {
+                Self::next_in_group_could_be_ipv4(state, c)
+            },
             Self::InGroupIpv4(state) => Ok(Self::InGroupIpv4(state)),
-            Self::ColonAfterGroup(state) => Self::next_colon_after_group(state, i, c),
+            Self::ColonAfterGroup(state) => {
+                Self::next_colon_after_group(state, i, c)
+            },
         }
     }
 
-    fn next_no_groups_yet(state: Shared<'a>, i: usize, c: char) -> Result<Self, MachineExitStatus> {
+    fn next_no_groups_yet(
+        state: Shared<'a>,
+        i: usize,
+        c: char,
+    ) -> Result<Self, MachineExitStatus> {
         let mut state = state;
         if c == ':' {
             Ok(Self::ColonButNoGroupsYet(state))
@@ -108,7 +130,10 @@ impl<'a> State<'a> {
         }
     }
 
-    fn next_colon_but_no_groups_yet(state: Shared<'a>, c: char) -> Result<Self, MachineExitStatus> {
+    fn next_colon_but_no_groups_yet(
+        state: Shared<'a>,
+        c: char,
+    ) -> Result<Self, MachineExitStatus> {
         let mut state = state;
         if c == ':' {
             state.double_colon_encountered = true;
@@ -118,7 +143,11 @@ impl<'a> State<'a> {
         }
     }
 
-    fn next_after_double_colon(state: Shared<'a>, i: usize, c: char) -> Result<Self, MachineExitStatus> {
+    fn next_after_double_colon(
+        state: Shared<'a>,
+        i: usize,
+        c: char,
+    ) -> Result<Self, MachineExitStatus> {
         let mut state = state;
         state.num_digits += 1;
         if state.num_digits > 4 {
@@ -133,7 +162,10 @@ impl<'a> State<'a> {
         }
     }
 
-    fn next_in_group_not_ipv4(state: Shared<'a>, c: char) -> Result<Self, MachineExitStatus> {
+    fn next_in_group_not_ipv4(
+        state: Shared<'a>,
+        c: char,
+    ) -> Result<Self, MachineExitStatus> {
         let mut state = state;
         if c == ':' {
             state.num_digits = 0;
@@ -151,7 +183,10 @@ impl<'a> State<'a> {
         }
     }
 
-    fn next_in_group_could_be_ipv4(state: Shared<'a>, c: char) -> Result<Self, MachineExitStatus> {
+    fn next_in_group_could_be_ipv4(
+        state: Shared<'a>,
+        c: char,
+    ) -> Result<Self, MachineExitStatus> {
         let mut state = state;
         if c == ':' {
             state.num_digits = 0;
@@ -173,7 +208,11 @@ impl<'a> State<'a> {
         }
     }
 
-    fn next_colon_after_group(state: Shared<'a>, i: usize, c: char) -> Result<Self, MachineExitStatus> {
+    fn next_colon_after_group(
+        state: Shared<'a>,
+        i: usize,
+        c: char,
+    ) -> Result<Self, MachineExitStatus> {
         let mut state = state;
         if c == ':' {
             if state.double_colon_encountered {
@@ -196,17 +235,18 @@ impl<'a> State<'a> {
 }
 
 pub fn validate_ipv6_address<T>(address: T) -> Result<(), Error>
-    where T: AsRef<str>
+where
+    T: AsRef<str>,
 {
     let address = address.as_ref();
     address
         .char_indices()
-        .try_fold(State::new(address), |machine, (i, c)| {
-            machine.next(i, c)
-        })
+        .try_fold(State::new(address), |machine, (i, c)| machine.next(i, c))
         .or_else(|machine_exit_status| match machine_exit_status {
-            MachineExitStatus::Ipv4Trailer(state) => Ok(State::InGroupIpv4(state)),
-            MachineExitStatus::Error(error) => Err(error)
+            MachineExitStatus::Ipv4Trailer(state) => {
+                Ok(State::InGroupIpv4(state))
+            },
+            MachineExitStatus::Error(error) => Err(error),
         })?
         .finalize()
 }
@@ -245,18 +285,32 @@ mod tests {
         );
         let test_vectors: &[TestVector] = &[
             ("::fFfF::1", Error::TooManyDoubleColons).into(),
-            ("::ffff:1.2.x.4", Error::IllegalCharacter(Context::Ipv4Address)).into(),
+            ("::ffff:1.2.x.4", Error::IllegalCharacter(Context::Ipv4Address))
+                .into(),
             ("::ffff:1.2.3.4.8", Error::TooManyAddressParts).into(),
             ("::ffff:1.2.3", Error::TooFewAddressParts).into(),
             ("::ffff:1.2.3.", Error::TruncatedHost).into(),
             ("::ffff:1.2.3.256", Error::InvalidDecimalOctet).into(),
-            ("::fxff:1.2.3.4", Error::IllegalCharacter(Context::Ipv6Address)).into(),
-            ("::ffff:1.2.3.-4", Error::IllegalCharacter(Context::Ipv4Address)).into(),
-            ("::ffff:1.2.3. 4", Error::IllegalCharacter(Context::Ipv4Address)).into(),
-            ("::ffff:1.2.3.4 ", Error::IllegalCharacter(Context::Ipv4Address)).into(),
-            ("2001:db8:85a3:8d3:1319:8a2e:370:7348:0000", Error::TooManyAddressParts).into(),
-            ("2001:db8:85a3:8d3:1319:8a2e:370:7348::1", Error::TooManyAddressParts).into(),
-            ("2001:db8:85a3:8d3:1319:8a2e:370::1", Error::TooManyAddressParts).into(),
+            ("::fxff:1.2.3.4", Error::IllegalCharacter(Context::Ipv6Address))
+                .into(),
+            ("::ffff:1.2.3.-4", Error::IllegalCharacter(Context::Ipv4Address))
+                .into(),
+            ("::ffff:1.2.3. 4", Error::IllegalCharacter(Context::Ipv4Address))
+                .into(),
+            ("::ffff:1.2.3.4 ", Error::IllegalCharacter(Context::Ipv4Address))
+                .into(),
+            (
+                "2001:db8:85a3:8d3:1319:8a2e:370:7348:0000",
+                Error::TooManyAddressParts,
+            )
+                .into(),
+            (
+                "2001:db8:85a3:8d3:1319:8a2e:370:7348::1",
+                Error::TooManyAddressParts,
+            )
+                .into(),
+            ("2001:db8:85a3:8d3:1319:8a2e:370::1", Error::TooManyAddressParts)
+                .into(),
             ("2001:db8:85a3::8a2e:0:", Error::TruncatedHost).into(),
             ("2001:db8:85a3::8a2e::", Error::TooManyDoubleColons).into(),
             ("20001:db8:85a3::1", Error::TooManyDigits).into(),
@@ -273,5 +327,4 @@ mod tests {
             );
         }
     }
-
 }

@@ -1,12 +1,17 @@
-use super::character_classes::{
-    REG_NAME_NOT_PCT_ENCODED,
-    USER_INFO_NOT_PCT_ENCODED,
+use super::{
+    character_classes::{
+        REG_NAME_NOT_PCT_ENCODED,
+        USER_INFO_NOT_PCT_ENCODED,
+    },
+    codec::{
+        decode_element,
+        encode_element,
+    },
+    context::Context,
+    error::Error,
+    parse_host_port::parse_host_port,
+    validate_ipv6_address::validate_ipv6_address,
 };
-use super::codec::{decode_element, encode_element};
-use super::context::Context;
-use super::error::Error;
-use super::parse_host_port::parse_host_port;
-use super::validate_ipv6_address::validate_ipv6_address;
 
 /// This is the optional part of a URI which governs the URI's namespace.  It
 /// typically contains a host name or IP address, and may also include a port
@@ -65,21 +70,30 @@ impl Authority {
     }
 
     /// Change the userinfo part of the Authority.
-    pub fn set_userinfo<T>(&mut self, userinfo: T)
-        where T: Into<Option<Vec<u8>>>
+    pub fn set_userinfo<T>(
+        &mut self,
+        userinfo: T,
+    ) where
+        T: Into<Option<Vec<u8>>>,
     {
         self.userinfo = userinfo.into();
     }
 
     /// Change the host name part of the Authority.
-    pub fn set_host<T>(&mut self, host: T)
-        where T: Into<Vec<u8>>
+    pub fn set_host<T>(
+        &mut self,
+        host: T,
+    ) where
+        T: Into<Vec<u8>>,
     {
         self.host = host.into();
     }
 
     /// Change the port number part of the Authority.
-    pub fn set_port(&mut self, port: Option<u16>) {
+    pub fn set_port(
+        &mut self,
+        port: Option<u16>,
+    ) {
         self.port = port;
     }
 
@@ -100,50 +114,62 @@ impl Authority {
     /// [`Error`](enum.Error.html) type.
     #[must_use = "you parsed it; don't you want the results?"]
     pub fn parse<T>(authority_string: T) -> Result<Self, Error>
-        where T: AsRef<str>
+    where
+        T: AsRef<str>,
     {
-        let (userinfo, host_port_string) = Self::parse_userinfo(authority_string.as_ref())?;
+        let (userinfo, host_port_string) =
+            Self::parse_userinfo(authority_string.as_ref())?;
         let (host, port) = parse_host_port(host_port_string)?;
-        Ok(Self{
+        Ok(Self {
             userinfo,
             host,
             port,
         })
     }
 
-    fn parse_userinfo(authority: &str) -> Result<(Option<Vec<u8>>, &str), Error> {
+    fn parse_userinfo(
+        authority: &str
+    ) -> Result<(Option<Vec<u8>>, &str), Error> {
         Ok(match authority.find('@') {
             Some(delimiter) => (
-                Some(
-                    decode_element(
-                        &authority[0..delimiter],
-                        &USER_INFO_NOT_PCT_ENCODED,
-                        Context::Userinfo
-                    )?
-                ),
-                &authority[delimiter+1..]
+                Some(decode_element(
+                    &authority[0..delimiter],
+                    &USER_INFO_NOT_PCT_ENCODED,
+                    Context::Userinfo,
+                )?),
+                &authority[delimiter + 1..],
             ),
-            None => (
-                None,
-                authority
-            )
+            None => (None, authority),
         })
     }
 }
 
 impl std::fmt::Display for Authority {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
         if let Some(userinfo) = &self.userinfo {
-            write!(f, "{}@", encode_element(&userinfo, &USER_INFO_NOT_PCT_ENCODED))?;
+            write!(
+                f,
+                "{}@",
+                encode_element(&userinfo, &USER_INFO_NOT_PCT_ENCODED)
+            )?;
         }
         let host_to_string = String::from_utf8(self.host.clone());
         match host_to_string {
-            Ok(host_to_string) if validate_ipv6_address(&host_to_string).is_ok() => {
+            Ok(host_to_string)
+                if validate_ipv6_address(&host_to_string).is_ok() =>
+            {
                 write!(f, "[{}]", host_to_string.to_ascii_lowercase())?;
-            },
-            _ => {
-                write!(f, "{}", encode_element(&self.host, &REG_NAME_NOT_PCT_ENCODED))?;
             }
+            _ => {
+                write!(
+                    f,
+                    "{}",
+                    encode_element(&self.host, &REG_NAME_NOT_PCT_ENCODED)
+                )?;
+            },
         }
         if let Some(port) = self.port {
             write!(f, ":{}", port)?;
@@ -168,7 +194,8 @@ mod tests {
         let test_vectors: &[TestVector] = &[
             ("www.example.com", None).into(),
             ("joe@www.example.com", Some("joe")).into(),
-            ("pepe:feelsbadman@www.example.com", Some("pepe:feelsbadman")).into(),
+            ("pepe:feelsbadman@www.example.com", Some("pepe:feelsbadman"))
+                .into(),
         ];
         for test_vector in test_vectors {
             let authority = Authority::parse(test_vector.authority_string());
@@ -183,10 +210,7 @@ mod tests {
 
     #[test]
     fn userinfo_illegal_characters() {
-        let test_vectors = [
-            "%X@www.example.com",
-            "{@www.example.com",
-        ];
+        let test_vectors = ["%X@www.example.com", "{@www.example.com"];
         for test_vector in &test_vectors {
             let authority = Authority::parse(test_vector);
             assert!(authority.is_err());
@@ -198,7 +222,7 @@ mod tests {
         named_tuple!(
             struct TestVector {
                 uri_string: &'static str,
-                userinfo: &'static str
+                userinfo: &'static str,
             }
         );
         let test_vectors: &[TestVector] = &[
@@ -223,11 +247,7 @@ mod tests {
 
     #[test]
     fn host_illegal_characters() {
-        let test_vectors = [
-            "%X@www.example.com",
-            "@www:example.com",
-            "[vX.:]",
-        ];
+        let test_vectors = ["%X@www.example.com", "@www:example.com", "[vX.:]"];
         for test_vector in &test_vectors {
             let authority = Authority::parse(test_vector);
             assert!(authority.is_err());
@@ -239,7 +259,7 @@ mod tests {
         named_tuple!(
             struct TestVector {
                 authority_string: &'static str,
-                host: &'static str
+                host: &'static str,
             }
         );
         let test_vectors: &[TestVector] = &[
@@ -257,10 +277,7 @@ mod tests {
             let authority = Authority::parse(test_vector.authority_string());
             assert!(authority.is_ok());
             let authority = authority.unwrap();
-            assert_eq!(
-                test_vector.host().as_bytes(),
-                authority.host()
-            );
+            assert_eq!(test_vector.host().as_bytes(), authority.host());
         }
     }
 
@@ -269,10 +286,7 @@ mod tests {
         let authority = Authority::parse("example.com.");
         assert!(authority.is_ok());
         let authority = authority.unwrap();
-        assert_eq!(
-            b"example.com.",
-            authority.host()
-        );
+        assert_eq!(b"example.com.", authority.host());
     }
 
     #[test]
@@ -289,11 +303,7 @@ mod tests {
             let authority = Authority::parse(*test_vector);
             assert!(authority.is_ok());
             let authority = authority.unwrap();
-            assert_eq!(
-                normalized_host.as_bytes(),
-                authority.host()
-            );
+            assert_eq!(normalized_host.as_bytes(), authority.host());
         }
     }
-
 }

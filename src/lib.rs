@@ -28,7 +28,10 @@
 //! let uri = Uri::parse("http://www.example.com/foo?bar#baz").unwrap();
 //! let authority = uri.authority().unwrap();
 //! assert_eq!("www.example.com".as_bytes(), authority.host());
-//! assert_eq!(Some("www.example.com"), uri.host_to_string().unwrap().as_deref());
+//! assert_eq!(
+//!     Some("www.example.com"),
+//!     uri.host_to_string().unwrap().as_deref()
+//! );
 //! assert_eq!("/foo", uri.path_to_string().unwrap());
 //! assert_eq!(Some("bar"), uri.query_to_string().unwrap().as_deref());
 //! assert_eq!(Some("baz"), uri.fragment_to_string().unwrap().as_deref());
@@ -38,7 +41,10 @@
 //!
 //! ```rust
 //! # extern crate rhymuri;
-//! use rhymuri::{Authority, Uri};
+//! use rhymuri::{
+//!     Authority,
+//!     Uri,
+//! };
 //!
 //! let mut uri = Uri::default();
 //! assert!(uri.set_scheme(String::from("http")).is_ok());
@@ -68,11 +74,13 @@ mod context;
 mod error;
 mod parse_host_port;
 mod percent_encoded_character_decoder;
+mod uri;
 mod validate_ipv4_address;
 mod validate_ipv6_address;
-mod uri;
 
-pub use crate::authority::Authority;
-pub use crate::context::Context;
-pub use crate::error::Error;
-pub use crate::uri::Uri;
+pub use crate::{
+    authority::Authority,
+    context::Context,
+    error::Error,
+    uri::Uri,
+};

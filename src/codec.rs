@@ -1,17 +1,22 @@
-use std::collections::HashSet;
-use std::convert::TryFrom;
-use std::fmt::Write;
+use std::{
+    collections::HashSet,
+    convert::TryFrom,
+    fmt::Write,
+};
 
-use super::context::Context;
-use super::error::Error;
-use super::percent_encoded_character_decoder::PercentEncodedCharacterDecoder;
+use super::{
+    context::Context,
+    error::Error,
+    percent_encoded_character_decoder::PercentEncodedCharacterDecoder,
+};
 
 pub fn decode_element<T>(
     element: T,
     allowed_characters: &'static HashSet<char>,
-    context: Context
+    context: Context,
 ) -> Result<Vec<u8>, Error>
-    where T: AsRef<str>
+where
+    T: AsRef<str>,
 {
     let mut decoding_pec = false;
     let mut pec_decoder = PercentEncodedCharacterDecoder::new();
@@ -20,14 +25,10 @@ pub fn decode_element<T>(
         .chars()
         .filter_map(|c| {
             if decoding_pec {
-                pec_decoder
-                    .next(c)
-                    .map_err(Into::into)
-                    .transpose()
-                    .map(|c| {
-                        decoding_pec = false;
-                        c
-                    })
+                pec_decoder.next(c).map_err(Into::into).transpose().map(|c| {
+                    decoding_pec = false;
+                    c
+                })
             } else if c == '%' {
                 decoding_pec = true;
                 None
@@ -42,7 +43,7 @@ pub fn decode_element<T>(
 
 pub fn encode_element(
     element: &[u8],
-    allowed_characters: &HashSet<char>
+    allowed_characters: &HashSet<char>,
 ) -> String {
     let mut encoding = String::with_capacity(element.len());
     for ci in element {

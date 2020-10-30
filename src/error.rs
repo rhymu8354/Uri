@@ -59,4 +59,3 @@ pub enum Error {
     #[error("truncated host")]
     TruncatedHost,
 }
-

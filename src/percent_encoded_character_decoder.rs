@@ -9,7 +9,7 @@ pub struct PercentEncodedCharacterDecoder {
 
 impl PercentEncodedCharacterDecoder {
     pub fn new() -> Self {
-        Self{
+        Self {
             decoded_character: 0,
             digits_left: 2,
         }
@@ -17,7 +17,7 @@ impl PercentEncodedCharacterDecoder {
 
     pub fn next(
         &mut self,
-        c: char
+        c: char,
     ) -> Result<Option<u8>, Error> {
         self.shift_in_hex_digit(c)?;
         self.digits_left -= 1;
@@ -37,7 +37,7 @@ impl PercentEncodedCharacterDecoder {
 
     fn shift_in_hex_digit(
         &mut self,
-        c: char
+        c: char,
     ) -> Result<(), Error> {
         self.decoded_character <<= 4;
         if let Some(ci) = c.to_digit(16) {
@@ -48,7 +48,6 @@ impl PercentEncodedCharacterDecoder {
         }
         Ok(())
     }
-
 }
 
 #[cfg(test)]
@@ -73,10 +72,7 @@ mod tests {
         ];
         for test_vector in test_vectors {
             let mut pec = PercentEncodedCharacterDecoder::new();
-            assert_eq!(
-                Ok(None),
-                pec.next(test_vector.sequence()[0])
-            );
+            assert_eq!(Ok(None), pec.next(test_vector.sequence()[0]));
             assert_eq!(
                 Ok(Some(*test_vector.expected_output())),
                 pec.next(test_vector.sequence()[1])
@@ -86,13 +82,10 @@ mod tests {
 
     #[test]
     fn bad_sequences() {
-        let test_vectors = [
-            'G', 'g', '.', 'z', '-', ' ', 'V',
-        ];
+        let test_vectors = ['G', 'g', '.', 'z', '-', ' ', 'V'];
         for test_vector in &test_vectors {
             let mut pec = PercentEncodedCharacterDecoder::new();
             assert!(pec.next(*test_vector).is_err());
         }
     }
-
 }
