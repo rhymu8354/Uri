@@ -199,9 +199,9 @@ impl Uri {
     /// # Errors
     ///
     /// Since host names may contain non-UTF8 byte sequences, this function may
-    /// return
-    /// [`Error::CannotExpressAsUtf8`](enum.Error.html#variant.
-    /// CannotExpressAsUtf8).
+    /// return [`Error::CannotExpressAsUtf8`][CannotExpressAsUtf8].
+    ///
+    /// [CannotExpressAsUtf8]: enum.Error.html#variant.CannotExpressAsUtf8
     #[must_use = "I made that host field into a string for you; don't you want it?"]
     pub fn host_to_string(&self) -> Result<Option<String>, Error> {
         self.host()
@@ -447,8 +447,9 @@ impl Uri {
     ///
     /// Since path segments may contain non-UTF8 byte sequences, this function
     /// may return
-    /// [`Error::CannotExpressAsUtf8`](enum.Error.html#variant.
-    /// CannotExpressAsUtf8).
+    /// [`Error::CannotExpressAsUtf8`][CannotExpressAsUtf8].
+    ///
+    /// [CannotExpressAsUtf8]: enum.Error.html#variant.CannotExpressAsUtf8
     #[must_use = "we went through all that trouble to put the path into a string, and you don't want it?"]
     pub fn path_to_string(&self) -> Result<String, Error> {
         match &*self.path {
@@ -474,8 +475,9 @@ impl Uri {
     /// # Errors
     ///
     /// Since queries may contain non-UTF8 byte sequences, this function may
-    /// return [`Error::CannotExpressAsUtf8`](enum.Error.html#variant.
-    /// CannotExpressAsUtf8).
+    /// return [`Error::CannotExpressAsUtf8`][CannotExpressAsUtf8].
+    ///
+    /// [CannotExpressAsUtf8]: enum.Error.html#variant.CannotExpressAsUtf8
     #[must_use = "use the query return value silly programmer"]
     pub fn query_to_string(&self) -> Result<Option<String>, Error> {
         self.query()
@@ -751,8 +753,9 @@ impl Uri {
     /// # Errors
     ///
     /// Since fragments may contain non-UTF8 byte sequences, this function may
-    /// return [`Error::CannotExpressAsUtf8`](enum.Error.html#variant.
-    /// CannotExpressAsUtf8).
+    /// return [`Error::CannotExpressAsUtf8`][CannotExpressAsUtf8].
+    ///
+    /// [CannotExpressAsUtf8]: enum.Error.html#variant.CannotExpressAsUtf8
     #[must_use = "come on, you intended to use that userinfo return value, didn't you?"]
     pub fn userinfo_to_string(&self) -> Result<Option<String>, Error> {
         self.userinfo()
