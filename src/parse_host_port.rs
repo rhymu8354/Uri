@@ -220,10 +220,7 @@ where
     T: AsRef<str>,
 {
     let (machine, host_port_string) = State::new(host_port_string.as_ref());
-    host_port_string
-        .chars()
-        .try_fold(machine, |machine, c| machine.next(c))?
-        .finalize()
+    host_port_string.chars().try_fold(machine, State::next)?.finalize()
 }
 
 #[cfg(test)]

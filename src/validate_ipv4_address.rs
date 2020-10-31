@@ -101,11 +101,7 @@ pub fn validate_ipv4_address<T>(address: T) -> Result<(), Error>
 where
     T: AsRef<str>,
 {
-    address
-        .as_ref()
-        .chars()
-        .try_fold(State::new(), |machine, c| machine.next(c))?
-        .finalize()
+    address.as_ref().chars().try_fold(State::new(), State::next)?.finalize()
 }
 
 #[cfg(test)]

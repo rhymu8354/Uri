@@ -176,8 +176,9 @@ impl Uri {
     /// # Errors
     ///
     /// Since fragments may contain non-UTF8 byte sequences, this function may
-    /// return [`Error::CannotExpressAsUtf8`](enum.Error.html#variant.
-    /// CannotExpressAsUtf8).
+    /// return [`Error::CannotExpressAsUtf8`][CannotExpressAsUtf8].
+    ///
+    /// [CannotExpressAsUtf8]: enum.Error.html#variant.CannotExpressAsUtf8
     #[must_use = "use the fragment return value silly programmer"]
     pub fn fragment_to_string(&self) -> Result<Option<String>, Error> {
         self.fragment()
@@ -1442,268 +1443,48 @@ mod tests {
                 expected_uri_string: &'static str,
             }
         );
+        #[rustfmt::skip]
         let test_vectors: &[TestVector] = &[
             // general test vectors
-            // scheme      userinfo     host                     port
-            // path         query           fragment     expected_uri_string
-            (
-                Some("http"),
-                Some("bob"),
-                Some("www.example.com"),
-                Some(8080),
-                "/abc/def",
-                Some("foobar"),
-                Some("ch2"),
-                "http://bob@www.example.com:8080/abc/def?foobar#ch2",
-            )
-                .into(),
-            (
-                Some("http"),
-                Some("bob"),
-                Some("www.example.com"),
-                Some(0),
-                "",
-                Some("foobar"),
-                Some("ch2"),
-                "http://bob@www.example.com:0?foobar#ch2",
-            )
-                .into(),
-            (
-                Some("http"),
-                Some("bob"),
-                Some("www.example.com"),
-                Some(0),
-                "",
-                Some("foobar"),
-                Some(""),
-                "http://bob@www.example.com:0?foobar#",
-            )
-                .into(),
-            (
-                None,
-                None,
-                Some("example.com"),
-                None,
-                "",
-                Some("bar"),
-                None,
-                "//example.com?bar",
-            )
-                .into(),
-            (
-                None,
-                None,
-                Some("example.com"),
-                None,
-                "",
-                Some(""),
-                None,
-                "//example.com?",
-            )
-                .into(),
-            (
-                None,
-                None,
-                Some("example.com"),
-                None,
-                "",
-                None,
-                None,
-                "//example.com",
-            )
-                .into(),
-            (
-                None,
-                None,
-                Some("example.com"),
-                None,
-                "/",
-                None,
-                None,
-                "//example.com/",
-            )
-                .into(),
-            (
-                None,
-                None,
-                Some("example.com"),
-                None,
-                "/xyz",
-                None,
-                None,
-                "//example.com/xyz",
-            )
-                .into(),
-            (
-                None,
-                None,
-                Some("example.com"),
-                None,
-                "/xyz/",
-                None,
-                None,
-                "//example.com/xyz/",
-            )
-                .into(),
-            (None, None, None, None, "/", None, None, "/").into(),
-            (None, None, None, None, "/xyz", None, None, "/xyz").into(),
-            (None, None, None, None, "/xyz/", None, None, "/xyz/").into(),
-            (None, None, None, None, "", None, None, "").into(),
-            (None, None, None, None, "xyz", None, None, "xyz").into(),
-            (None, None, None, None, "xyz/", None, None, "xyz/").into(),
-            (None, None, None, None, "", Some("bar"), None, "?bar").into(),
-            (
-                Some("http"),
-                None,
-                None,
-                None,
-                "",
-                Some("bar"),
-                None,
-                "http:?bar",
-            )
-                .into(),
-            (Some("http"), None, None, None, "", None, None, "http:").into(),
-            (
-                Some("http"),
-                None,
-                Some("::1"),
-                None,
-                "",
-                None,
-                None,
-                "http://[::1]",
-            )
-                .into(),
-            (
-                Some("http"),
-                None,
-                Some("::1.2.3.4"),
-                None,
-                "",
-                None,
-                None,
-                "http://[::1.2.3.4]",
-            )
-                .into(),
-            (
-                Some("http"),
-                None,
-                Some("1.2.3.4"),
-                None,
-                "",
-                None,
-                None,
-                "http://1.2.3.4",
-            )
-                .into(),
-            (None, None, None, None, "", None, None, "").into(),
-            (
-                Some("http"),
-                Some("bob"),
-                None,
-                None,
-                "",
-                Some("foobar"),
-                None,
-                "http://bob@?foobar",
-            )
-                .into(),
-            (
-                None,
-                Some("bob"),
-                None,
-                None,
-                "",
-                Some("foobar"),
-                None,
-                "//bob@?foobar",
-            )
-                .into(),
-            (None, Some("bob"), None, None, "", None, None, "//bob@").into(),
+            // scheme      userinfo     host                     port        path         query           fragment     expected_uri_string
+            (Some("http"), Some("bob"), Some("www.example.com"), Some(8080), "/abc/def",  Some("foobar"), Some("ch2"), "http://bob@www.example.com:8080/abc/def?foobar#ch2").into(),
+            (Some("http"), Some("bob"), Some("www.example.com"), Some(0),    "",          Some("foobar"), Some("ch2"), "http://bob@www.example.com:0?foobar#ch2").into(),
+            (Some("http"), Some("bob"), Some("www.example.com"), Some(0),    "",          Some("foobar"), Some(""),    "http://bob@www.example.com:0?foobar#").into(),
+            (None,         None,        Some("example.com"),     None,       "",          Some("bar"),    None,        "//example.com?bar").into(),
+            (None,         None,        Some("example.com"),     None,       "",          Some(""),       None,        "//example.com?").into(),
+            (None,         None,        Some("example.com"),     None,       "",          None,           None,        "//example.com").into(),
+            (None,         None,        Some("example.com"),     None,       "/",         None,           None,        "//example.com/").into(),
+            (None,         None,        Some("example.com"),     None,       "/xyz",      None,           None,        "//example.com/xyz").into(),
+            (None,         None,        Some("example.com"),     None,       "/xyz/",     None,           None,        "//example.com/xyz/").into(),
+            (None,         None,        None,                    None,       "/",         None,           None,        "/").into(),
+            (None,         None,        None,                    None,       "/xyz",      None,           None,        "/xyz").into(),
+            (None,         None,        None,                    None,       "/xyz/",     None,           None,        "/xyz/").into(),
+            (None,         None,        None,                    None,       "",          None,           None,        "").into(),
+            (None,         None,        None,                    None,       "xyz",       None,           None,        "xyz").into(),
+            (None,         None,        None,                    None,       "xyz/",      None,           None,        "xyz/").into(),
+            (None,         None,        None,                    None,       "",          Some("bar"),    None,        "?bar").into(),
+            (Some("http"), None,        None,                    None,       "",          Some("bar"),    None,        "http:?bar").into(),
+            (Some("http"), None,        None,                    None,       "",          None,           None,        "http:").into(),
+            (Some("http"), None,        Some("::1"),             None,       "",          None,           None,        "http://[::1]").into(),
+            (Some("http"), None,        Some("::1.2.3.4"),       None,       "",          None,           None,        "http://[::1.2.3.4]").into(),
+            (Some("http"), None,        Some("1.2.3.4"),         None,       "",          None,           None,        "http://1.2.3.4").into(),
+            (None,         None,        None,                    None,       "",          None,           None,        "").into(),
+            (Some("http"), Some("bob"), None,                    None,       "",          Some("foobar"), None,        "http://bob@?foobar").into(),
+            (None,         Some("bob"), None,                    None,       "",          Some("foobar"), None,        "//bob@?foobar").into(),
+            (None,         Some("bob"), None,                    None,       "",          None,           None,        "//bob@").into(),
+
             // percent-encoded character test vectors
-            // scheme      userinfo      host                     port
-            // path        query            fragment     expected_uri_string
-            (
-                Some("http"),
-                Some("b b"),
-                Some("www.example.com"),
-                Some(8080),
-                "/abc/def",
-                Some("foobar"),
-                Some("ch2"),
-                "http://b%20b@www.example.com:8080/abc/def?foobar#ch2",
-            )
-                .into(),
-            (
-                Some("http"),
-                Some("bob"),
-                Some("www.e ample.com"),
-                Some(8080),
-                "/abc/def",
-                Some("foobar"),
-                Some("ch2"),
-                "http://bob@www.e%20ample.com:8080/abc/def?foobar#ch2",
-            )
-                .into(),
-            (
-                Some("http"),
-                Some("bob"),
-                Some("www.example.com"),
-                Some(8080),
-                "/a c/def",
-                Some("foobar"),
-                Some("ch2"),
-                "http://bob@www.example.com:8080/a%20c/def?foobar#ch2",
-            )
-                .into(),
-            (
-                Some("http"),
-                Some("bob"),
-                Some("www.example.com"),
-                Some(8080),
-                "/abc/def",
-                Some("foo ar"),
-                Some("ch2"),
-                "http://bob@www.example.com:8080/abc/def?foo%20ar#ch2",
-            )
-                .into(),
-            (
-                Some("http"),
-                Some("bob"),
-                Some("www.example.com"),
-                Some(8080),
-                "/abc/def",
-                Some("foobar"),
-                Some("c 2"),
-                "http://bob@www.example.com:8080/abc/def?foobar#c%202",
-            )
-                .into(),
-            (
-                Some("http"),
-                Some("bob"),
-                Some("ሴ.example.com"),
-                Some(8080),
-                "/abc/def",
-                Some("foobar"),
-                None,
-                "http://bob@%E1%88%B4.example.com:8080/abc/def?foobar",
-            )
-                .into(),
+            // scheme      userinfo      host                     port        path        query            fragment     expected_uri_string
+            (Some("http"), Some("b b"),  Some("www.example.com"), Some(8080), "/abc/def", Some("foobar"),  Some("ch2"), "http://b%20b@www.example.com:8080/abc/def?foobar#ch2").into(),
+            (Some("http"), Some("bob"),  Some("www.e ample.com"), Some(8080), "/abc/def", Some("foobar"),  Some("ch2"), "http://bob@www.e%20ample.com:8080/abc/def?foobar#ch2").into(),
+            (Some("http"), Some("bob"),  Some("www.example.com"), Some(8080), "/a c/def", Some("foobar"),  Some("ch2"), "http://bob@www.example.com:8080/a%20c/def?foobar#ch2").into(),
+            (Some("http"), Some("bob"),  Some("www.example.com"), Some(8080), "/abc/def", Some("foo ar"),  Some("ch2"), "http://bob@www.example.com:8080/abc/def?foo%20ar#ch2").into(),
+            (Some("http"), Some("bob"),  Some("www.example.com"), Some(8080), "/abc/def", Some("foobar"),  Some("c 2"), "http://bob@www.example.com:8080/abc/def?foobar#c%202").into(),
+            (Some("http"), Some("bob"),  Some("ሴ.example.com"),   Some(8080), "/abc/def", Some("foobar"),  None,        "http://bob@%E1%88%B4.example.com:8080/abc/def?foobar").into(),
+
             // normalization of IPv6 address hex digits
-            // scheme      userinfo     host                   port        path
-            // query           fragment     expected_uri_string
-            (
-                Some("http"),
-                Some("bob"),
-                Some("fFfF::1"),
-                Some(8080),
-                "/abc/def",
-                Some("foobar"),
-                Some("c 2"),
-                "http://bob@[ffff::1]:8080/abc/def?foobar#c%202",
-            )
-                .into(),
+            // scheme      userinfo     host                   port        path        query           fragment     expected_uri_string
+            (Some("http"), Some("bob"), Some("fFfF::1"),       Some(8080), "/abc/def", Some("foobar"), Some("c 2"), "http://bob@[ffff::1]:8080/abc/def?foobar#c%202").into(),
         ];
         for test_vector in test_vectors {
             let mut uri = Uri::default();
