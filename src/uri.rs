@@ -689,10 +689,9 @@ impl Uri {
     {
         // Split authority from path.  If there is an authority, parse it.
         let authority_and_path_string = authority_and_path_string.as_ref();
-        if authority_and_path_string.starts_with("//") {
-            // Strip off authority marker.
-            let authority_and_path_string = &authority_and_path_string[2..];
-
+        if let Some(authority_and_path_string) =
+            authority_and_path_string.strip_prefix("//")
+        {
             // First separate the authority from the path.
             let authority_end = authority_and_path_string
                 .find('/')
