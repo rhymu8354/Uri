@@ -184,6 +184,9 @@ mod tests {
     use super::*;
 
     #[test]
+    // NOTE: This lint has to be disabled at the test level because
+    // it's triggered inside the `named_tuple!` macro expansion.
+    #[allow(clippy::ref_option_ref)]
     fn userinfo() {
         named_tuple!(
             struct TestVector {

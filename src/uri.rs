@@ -1,4 +1,7 @@
-use std::collections::HashSet;
+use std::{
+    collections::HashSet,
+    convert::TryFrom,
+};
 
 use super::{
     authority::Authority,
@@ -56,6 +59,10 @@ use super::{
 /// # }
 /// ```
 ///
+/// Implementations are provided for the [`TryFrom`] trait, so that
+/// [`TryFrom::try_from`] or [`TryInto::try_into`] may be used as alternatives
+/// to [`parse`].
+///
 /// ## Generating a URI from its components
 ///
 /// ```rust
@@ -79,6 +86,7 @@ use super::{
 /// [`authority`]: #method.authority
 /// [`Authority` type]: struct.Authority.html
 /// [`host`]: #method.host
+/// [`parse`]: #method.parse
 /// [`path`]: #method.path
 /// [`path_to_string`]: #method.path_to_string
 /// [`port`]: #method.port
@@ -87,6 +95,8 @@ use super::{
 /// [`set_authority`]: #method.set_authority
 /// [`userinfo`]: #method.userinfo
 /// [slice]: https://doc.rust-lang.org/std/primitive.slice.html
+/// [`TryFrom::try_from`]: https://doc.rust-lang.org/std/convert/trait.TryFrom.html#tymethod.try_from
+/// [`TryInto::try_into`]: https://doc.rust-lang.org/std/convert/trait.TryInto.html#tymethod.try_into
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Uri {
     scheme: Option<String>,
@@ -804,8 +814,26 @@ impl std::fmt::Display for Uri {
     }
 }
 
+impl TryFrom<&'_ str> for Uri {
+    type Error = Error;
+
+    fn try_from(uri_string: &'_ str) -> Result<Self, Self::Error> {
+        Uri::parse(uri_string)
+    }
+}
+
+impl TryFrom<String> for Uri {
+    type Error = Error;
+
+    fn try_from(uri_string: String) -> Result<Self, Self::Error> {
+        Uri::parse(uri_string)
+    }
+}
+
 #[cfg(test)]
 mod tests {
+
+    use std::convert::TryInto;
 
     use super::*;
 
@@ -821,7 +849,8 @@ mod tests {
 
     #[test]
     fn url() {
-        let uri = Uri::parse("http://www.example.com/foo/bar");
+        let uri: Result<Uri, Error> =
+            "http://www.example.com/foo/bar".try_into();
         assert!(uri.is_ok());
         let uri = uri.unwrap();
         assert_eq!(Some("http"), uri.scheme());
@@ -835,7 +864,7 @@ mod tests {
 
     #[test]
     fn urn_default_path_delimiter() {
-        let uri = Uri::parse("urn:book:fantasy:Hobbit");
+        let uri = Uri::try_from("urn:book:fantasy:Hobbit");
         assert!(uri.is_ok());
         let uri = uri.unwrap();
         assert_eq!(Some("urn"), uri.scheme());
@@ -928,6 +957,9 @@ mod tests {
     }
 
     #[test]
+    // NOTE: This lint has to be disabled at the test level because
+    // it's triggered inside the `named_tuple!` macro expansion.
+    #[allow(clippy::ref_option_ref)]
     fn query_and_fragment_elements() {
         named_tuple!(
             struct TestVector {
@@ -1428,10 +1460,10 @@ mod tests {
     }
 
     #[test]
-    // NOTE: `clippy::too_many_arguments` lint has to be disabled at the
-    // test level because it's triggered inside the `named_tuple!` macro
-    // expansion.
+    // NOTE: These lints have to be disabled at the test level because they're
+    // triggered inside the `named_tuple!` macro expansion.
     #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::ref_option_ref)]
     fn generate_string() {
         named_tuple!(
             struct TestVector {
