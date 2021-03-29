@@ -184,9 +184,10 @@ mod tests {
     use super::*;
 
     #[test]
-    // NOTE: This lint has to be disabled at the test level because
-    // it's triggered inside the `named_tuple!` macro expansion.
+    // NOTE: These lints are disabled because they're triggered inside the
+    // `named_tuple!` macro expansion.
     #[allow(clippy::ref_option_ref)]
+    #[allow(clippy::from_over_into)]
     fn userinfo() {
         named_tuple!(
             struct TestVector {
@@ -221,6 +222,9 @@ mod tests {
     }
 
     #[test]
+    // NOTE: This lint is disabled because it's triggered inside the
+    // `named_tuple!` macro expansion.
+    #[allow(clippy::from_over_into)]
     fn userinfo_barely_legal() {
         named_tuple!(
             struct TestVector {
@@ -258,6 +262,9 @@ mod tests {
     }
 
     #[test]
+    // NOTE: This lint is disabled because it's triggered inside the
+    // `named_tuple!` macro expansion.
+    #[allow(clippy::from_over_into)]
     fn host_barely_legal() {
         named_tuple!(
             struct TestVector {

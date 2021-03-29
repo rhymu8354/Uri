@@ -873,6 +873,9 @@ mod tests {
     }
 
     #[test]
+    // NOTE: This lint is disabled because it's triggered inside the
+    // `named_tuple!` macro expansion.
+    #[allow(clippy::from_over_into)]
     fn path_corner_cases() {
         named_tuple!(
             struct TestVector {
@@ -901,6 +904,9 @@ mod tests {
     }
 
     #[test]
+    // NOTE: This lint is disabled because it's triggered inside the
+    // `named_tuple!` macro expansion.
+    #[allow(clippy::from_over_into)]
     fn relative_vs_non_relative_references() {
         named_tuple!(
             struct TestVector {
@@ -926,6 +932,9 @@ mod tests {
     }
 
     #[test]
+    // NOTE: This lint is disabled because it's triggered inside the
+    // `named_tuple!` macro expansion.
+    #[allow(clippy::from_over_into)]
     fn relative_vs_non_relative_paths() {
         named_tuple!(
             struct TestVector {
@@ -957,9 +966,10 @@ mod tests {
     }
 
     #[test]
-    // NOTE: This lint has to be disabled at the test level because
-    // it's triggered inside the `named_tuple!` macro expansion.
+    // NOTE: These lints are disabled because they're triggered inside the
+    // `named_tuple!` macro expansion.
     #[allow(clippy::ref_option_ref)]
+    #[allow(clippy::from_over_into)]
     fn query_and_fragment_elements() {
         named_tuple!(
             struct TestVector {
@@ -1041,6 +1051,9 @@ mod tests {
     }
 
     #[test]
+    // NOTE: This lint is disabled because it's triggered inside the
+    // `named_tuple!` macro expansion.
+    #[allow(clippy::from_over_into)]
     fn scheme_barely_legal() {
         named_tuple!(
             struct TestVector {
@@ -1130,6 +1143,9 @@ mod tests {
     }
 
     #[test]
+    // NOTE: This lint is disabled because it's triggered inside the
+    // `named_tuple!` macro expansion.
+    #[allow(clippy::from_over_into)]
     fn path_barely_legal() {
         named_tuple!(
             struct TestVector {
@@ -1189,6 +1205,9 @@ mod tests {
     }
 
     #[test]
+    // NOTE: This lint is disabled because it's triggered inside the
+    // `named_tuple!` macro expansion.
+    #[allow(clippy::from_over_into)]
     fn query_barely_legal() {
         named_tuple!(
             struct TestVector {
@@ -1248,6 +1267,9 @@ mod tests {
     }
 
     #[test]
+    // NOTE: This lint is disabled because it's triggered inside the
+    // `named_tuple!` macro expansion.
+    #[allow(clippy::from_over_into)]
     fn fragment_barely_legal() {
         named_tuple!(
             struct TestVector {
@@ -1275,6 +1297,9 @@ mod tests {
     }
 
     #[test]
+    // NOTE: This lint is disabled because it's triggered inside the
+    // `named_tuple!` macro expansion.
+    #[allow(clippy::from_over_into)]
     fn paths_with_percent_encoded_characters() {
         named_tuple!(
             struct TestVector {
@@ -1305,6 +1330,9 @@ mod tests {
     }
 
     #[test]
+    // NOTE: This lint is disabled because it's triggered inside the
+    // `named_tuple!` macro expansion.
+    #[allow(clippy::from_over_into)]
     fn normalize_path() {
         named_tuple!(
             struct TestVector {
@@ -1384,6 +1412,9 @@ mod tests {
     }
 
     #[test]
+    // NOTE: This lint is disabled because it's triggered inside the
+    // `named_tuple!` macro expansion.
+    #[allow(clippy::from_over_into)]
     fn reference_resolution() {
         named_tuple!(
             struct TestVector {
@@ -1464,6 +1495,7 @@ mod tests {
     // triggered inside the `named_tuple!` macro expansion.
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::ref_option_ref)]
+    #[allow(clippy::from_over_into)]
     fn generate_string() {
         named_tuple!(
             struct TestVector {

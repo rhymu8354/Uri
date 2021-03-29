@@ -56,6 +56,9 @@ mod tests {
     use super::*;
 
     #[test]
+    // NOTE: This lint is disabled because it's triggered inside the
+    // `named_tuple!` macro expansion.
+    #[allow(clippy::from_over_into)]
     fn good_sequences() {
         named_tuple!(
             struct TestVector {

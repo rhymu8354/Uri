@@ -99,7 +99,7 @@ impl State {
             },
             Self::IpvFutureBody(state) => Self::next_ipv_future_body(state, c),
             Self::GarbageCheck(state) => Self::next_garbage_check(state, c),
-            Self::Port(state) => Self::next_port(state, c),
+            Self::Port(state) => Ok(Self::next_port(state, c)),
         }
     }
 
@@ -206,10 +206,10 @@ impl State {
     fn next_port(
         state: Shared,
         c: char,
-    ) -> Result<Self, Error> {
+    ) -> Self {
         let mut state = state;
         state.port_string.push(c);
-        Ok(Self::Port(state))
+        Self::Port(state)
     }
 }
 
